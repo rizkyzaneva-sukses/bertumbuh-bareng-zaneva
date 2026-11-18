@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum LoanStatus {
+  DIPINJAM
+  TERLAMBAT
+  DIKEMBALIKAN
+}
+
+enum ReturnedVia {
+  LINK
+  USER
+  ADMIN
+}
+
+enum ReminderKind {
+  FIRST_LINK
+  FOLLOW_UP
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  name               String
+  /// Nomor HP ternormalisasi, format 62812xxxx (tanpa +). Ini username.
+  phone              String   @unique
+  passwordHash       String
+  /// Password sementara (plain) supaya admin bisa membagikannya. Dihapus saat user ganti password.
+  tempPassword       String?
+  role               Role     @default(MEMBER)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  loans              Loan[]
+}
+
+model Book {
+  id        String   @id @default(cuid())
+  title     String
+  author    String
+  pages     Int?
+  category  String   @default("")
+  synopsis  String   @default("")
+  /// Jumlah eksemplar
+  stock     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  loans     Loan[]
+
+  @@index([title])
+}
+
+model Loan {
+  id          String       @id @default(cuid())
+  userId      String
+  bookId      String
+  borrowedAt  DateTime     @default(now())
+  /// Tanggal jatuh tempo (tanggal kalender WIB, disimpan sebagai DATE)
+  dueDate     DateTime     @db.Date
+  returnedAt  DateTime?
+  returnedVia ReturnedVia?
+  status      LoanStatus   @default(DIPINJAM)
+  /// Nonce untuk link pengembalian sekali pakai. Null = tidak ada link aktif.
+  returnNonce String?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book        Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  reminders   ReminderLog[]
+
+  @@index([userId, status])
+  @@index([bookId, status])
+  @@index([status, dueDate])
+}
+
+model ReminderLog {
+  id        String         @id @default(cuid())
+  loanId    String
+  /// Tanggal kalender WIB (YYYY-MM-DD) saat pengingat dikirim
+  sentOn    String
+  kind      ReminderKind
+  status    ReminderStatus @default(PENDING)
+  attempts  Int            @default(0)
+  message   String         @default("")
+  error     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  loan      Loan           @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@unique([loanId, sentOn])
+  @@index([createdAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
