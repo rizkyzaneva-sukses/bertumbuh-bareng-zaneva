@@ -1,6 +1,10 @@
 import { prisma } from "./db";
 import { effectiveStatus } from "./loans";
 import { keyFromDbDate } from "./dates";
+import { displayPhone } from "./phone";
+
+/** Nama tampilan: kalau orangnya belum mengisi nama, pakai nomor HP. */
+const label = (name: string, phone: string) => name.trim() || displayPhone(phone);
 
 export type Reader = { userId: string; name: string };
 
@@ -10,6 +14,11 @@ export async function getDashboard(now = new Date()) {
     prisma.book.findMany({ orderBy: { title: "asc" } }),
     prisma.loan.findMany({ include: { book: { select: { id: true, title: true, author: true } } }, orderBy: { borrowedAt: "desc" } }),
   ]);
+
+  const userLabel = (id: string) => {
+    const f = users.find((x) => x.id === id);
+    return f ? label(f.name, f.phone) : "?";
+  };
 
   const perUser = users.map((u) => {
     const mine = loans.filter((l) => l.userId === u.id);
@@ -21,7 +30,7 @@ export async function getDashboard(now = new Date()) {
       .map((l) => ({ loanId: l.id, ...l.book, dueKey: keyFromDbDate(l.dueDate), status: effectiveStatus(l, now) }));
     return {
       userId: u.id,
-      name: u.name,
+      name: label(u.name, u.phone),
       finished: [...finishedBooks.values()],
       finishedCount: finishedBooks.size,
       reading,
@@ -31,10 +40,10 @@ export async function getDashboard(now = new Date()) {
   const perBook = books.map((b) => {
     const forBook = loans.filter((l) => l.bookId === b.id);
     const readers = new Map<string, Reader>();
-    for (const l of forBook.filter((x) => x.returnedAt)) readers.set(l.userId, { userId: l.userId, name: users.find((u) => u.id === l.userId)?.name ?? "?" });
+    for (const l of forBook.filter((x) => x.returnedAt)) readers.set(l.userId, { userId: l.userId, name: userLabel(l.userId) });
     const readingNow = forBook
       .filter((l) => !l.returnedAt)
-      .map((l) => ({ userId: l.userId, name: users.find((u) => u.id === l.userId)?.name ?? "?", dueKey: keyFromDbDate(l.dueDate), status: effectiveStatus(l, now) }));
+      .map((l) => ({ userId: l.userId, name: userLabel(l.userId), dueKey: keyFromDbDate(l.dueDate), status: effectiveStatus(l, now) }));
     return {
       id: b.id,
       title: b.title,

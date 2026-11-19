@@ -25,5 +25,5 @@ export const POST = handler({ auth: false }, async (req) => {
   const session = await getSession();
   session.userId = user.id;
   await session.save();
-  return json({ ok: true, mustChangePassword: user.mustChangePassword, role: user.role });
+  return json({ ok: true, mustChangePassword: user.mustChangePassword, needsName: !user.name.trim(), role: user.role });
 });

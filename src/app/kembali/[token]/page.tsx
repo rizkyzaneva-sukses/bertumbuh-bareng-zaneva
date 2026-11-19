@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { verifyReturnToken } from "@/lib/tokens";
 import { formatTanggal, keyFromDbDate } from "@/lib/dates";
 import { ReturnViaLink } from "@/components/ReturnViaLink";
+import { displayPhone } from "@/lib/phone";
 
 export const metadata = { title: "Balikin buku", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export default async function KembaliPage({ params }: { params: Promise<{ token:
           {valid && loan ? (
             <>
               <h1>Balikin buku</h1>
-              <p className="muted">Halo {loan.user.name}, kamu meminjam:</p>
+              <p className="muted">Halo {loan.user.name || displayPhone(loan.user.phone)}, kamu meminjam:</p>
               <h2 data-testid="return-title">{loan.book.title}</h2>
               <p className="small muted">Jatuh tempo {formatTanggal(keyFromDbDate(loan.dueDate))}</p>
               <ReturnViaLink token={token} title={loan.book.title} />

@@ -7,7 +7,8 @@ import { normalizeCategory } from "./categories";
 
 export const SEED_ADMINS = [
   { name: "Rizky", phone: "081220210193" },
-  { name: "Admin Kedua", phone: "085177555437" },
+  // Nama dikosongkan supaya pemilik nomor mengisi sendiri saat login pertama.
+  { name: "", phone: "085177555437" },
 ];
 
 export const SEED_ADMIN_PHONES = SEED_ADMINS.map((a) => normalizePhone(a.phone)!);

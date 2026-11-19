@@ -19,7 +19,7 @@ export default async function Beranda() {
   const me = dash.ranking.find((r) => r.userId === user.id);
   return (
     <>
-      <h1>Halo, {user.name.split(" ")[0]} 👋</h1>
+      <h1>Halo, {user.name.trim().split(" ")[0] || "Sahabat"} 👋</h1>
       <p className="muted">Yuk bertumbuh bareng. Satu halaman sehari juga jalan.</p>
 
       <div className="grid cols2" style={{ marginBottom: 14 }}>

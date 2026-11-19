@@ -11,7 +11,7 @@ export default async function ProfilPage() {
     <>
       <h1>Profil</h1>
       <div className="card">
-        <h2>{user.name}</h2>
+        <h2>{user.name || "(nama belum diisi)"}</h2>
         <p className="muted" style={{ margin: 0 }}>Nomor HP: {displayPhone(user.phone)} · {user.role === "ADMIN" ? "Admin" : "Anggota"}</p>
       </div>
       <div className="card">

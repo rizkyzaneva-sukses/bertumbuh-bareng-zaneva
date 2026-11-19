@@ -22,7 +22,7 @@ export default async function AdminPinjaman() {
           <div className="row between">
             <div style={{ minWidth: 0 }}>
               <h3 style={{ margin: 0 }}>{l.book.title}</h3>
-              <div className="small">{l.user.name} · <span className="muted">{displayPhone(l.user.phone)}</span></div>
+              <div className="small">{l.user.name || displayPhone(l.user.phone)} · <span className="muted">{displayPhone(l.user.phone)}</span></div>
               <div className="small muted">Dipinjam {formatDateTimeWib(l.borrowedAt)} · tempo {formatTanggalPendek(keyFromDbDate(l.dueDate))}</div>
             </div>
             <StatusChip status={effectiveStatus(l)} />

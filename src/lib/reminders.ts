@@ -3,6 +3,7 @@ import { dayOfWeek, diffDays, formatTanggal, jakartaHour, jakartaKey, keyFromDbD
 import { issueReturnToken } from "./loans";
 import { returnUrl } from "./tokens";
 import { wahaSendText, type SendText } from "./waha";
+import { displayPhone } from "./phone";
 import type { ReminderKind } from "../generated/prisma/client";
 
 /** Jam kirim pengingat (WIB). Job boleh jalan kapan saja; mengirim hanya di jendela ini. */
@@ -133,9 +134,9 @@ export async function runReminderJob(opts: JobOptions = {}): Promise<JobResult> 
         const dueKey = keyFromDbDate(loan.dueDate);
         if (kind === "FIRST_LINK") {
           const token = await issueReturnToken(loan.id, now);
-          text = firstReminderText(loan.user.name, loan.book.title, dueKey, returnUrl(token));
+          text = firstReminderText(loan.user.name.trim() || `kak ${displayPhone(loan.user.phone)}`, loan.book.title, dueKey, returnUrl(token));
         } else {
-          text = followUpText(loan.user.name, loan.book.title, Math.max(1, diffDays(dueKey, today)));
+          text = followUpText(loan.user.name.trim() || `kak ${displayPhone(loan.user.phone)}`, loan.book.title, Math.max(1, diffDays(dueKey, today)));
         }
         await send(loan.user.phone, text);
         // simpan teks tanpa token supaya log tidak menyimpan link aktif

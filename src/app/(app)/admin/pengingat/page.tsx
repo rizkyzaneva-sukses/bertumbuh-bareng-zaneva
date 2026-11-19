@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { formatDateTimeWib } from "@/lib/dates";
 import { SEND_FROM_HOUR, SEND_UNTIL_HOUR } from "@/lib/reminders";
+import { displayPhone } from "@/lib/phone";
 
 export const metadata = { title: "Admin · Pengingat WA" };
 
@@ -27,7 +28,7 @@ export default async function AdminPengingat() {
               {logs.map((l) => (
                 <tr key={l.id}>
                   <td>{formatDateTimeWib(l.createdAt)}</td>
-                  <td>{l.loan.user.name}</td>
+                  <td>{l.loan.user.name || displayPhone(l.loan.user.phone)}</td>
                   <td>{l.loan.book.title}</td>
                   <td>{l.kind === "FIRST_LINK" ? "Pertama (+link)" : "Lanjutan (teks)"}</td>
                   <td>{l.status === "SENT" ? <span className="chip green">Terkirim</span> : l.status === "FAILED" ? <span className="chip red" title={l.error ?? ""}>Gagal</span> : <span className="chip amber">Proses</span>}</td>

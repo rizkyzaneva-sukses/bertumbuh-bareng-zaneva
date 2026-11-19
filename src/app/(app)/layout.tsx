@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { needsProfile } from "@/lib/profile";
 import { Nav } from "@/components/Nav";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ForcePasswordModal } from "@/components/ForcePasswordModal";
+import { OnboardingModal } from "@/components/ForcePasswordModal";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const isAdmin = user.role === "ADMIN";
+  const locked = needsProfile(user);
   return (
     <>
       <header className="topbar">
@@ -24,9 +26,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <ThemeToggle />
         </div>
       </header>
-      <main className="wrap" aria-hidden={user.mustChangePassword || undefined}>{children}</main>
+      <main className="wrap" aria-hidden={locked || undefined}>{children}</main>
       <Nav isAdmin={isAdmin} variant="bottom" />
-      {user.mustChangePassword && <ForcePasswordModal name={user.name} />}
+      {locked && <OnboardingModal name={user.name} needsName={!user.name.trim()} />}
     </>
   );
 }
