@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { computeDueDate, dateFromKey, jakartaKey, keyFromDbDate } from "./dates";
 import { makeReturnToken, newNonce } from "./tokens";
+import { stockLoss, type Condition } from "./conditions";
 import type { ReturnedVia, LoanStatus } from "../generated/prisma/client";
 
 export const MAX_ACTIVE_LOANS = 2;
@@ -46,16 +47,40 @@ export async function borrowBook(userId: string, bookId: string, now = new Date(
   });
 }
 
-export async function returnLoan(loanId: string, via: ReturnedVia, now = new Date()) {
+export async function returnLoan(
+  loanId: string,
+  via: ReturnedVia,
+  now = new Date(),
+  condition: Condition = "BAIK",
+  note?: string | null,
+) {
   // updateMany bersyarat = atomik; hanya satu request yang menang
   const res = await prisma.loan.updateMany({
     where: { id: loanId, returnedAt: null },
-    data: { returnedAt: now, returnedVia: via, status: "DIKEMBALIKAN", returnNonce: null },
+    data: {
+      returnedAt: now,
+      returnedVia: via,
+      status: "DIKEMBALIKAN",
+      returnNonce: null,
+      condition,
+      conditionNote: note?.trim() ? note.trim().slice(0, 300) : null,
+    },
   });
   if (res.count === 0) {
     const l = await prisma.loan.findUnique({ where: { id: loanId } });
     if (!l) throw new AppError("NOT_FOUND", "Peminjaman tidak ditemukan", 404);
     throw new AppError("ALREADY_RETURNED", "Buku ini sudah dikembalikan.", 409);
+  }
+  // Buku hilang = stok berkurang 1, supaya tidak terus dihitung tersedia.
+  const loss = stockLoss(condition);
+  if (loss > 0) {
+    const loan = await prisma.loan.findUnique({ where: { id: loanId }, select: { bookId: true } });
+    if (loan) {
+      await prisma.book.updateMany({
+        where: { id: loan.bookId, stock: { gte: loss } },
+        data: { stock: { decrement: loss } },
+      });
+    }
   }
   return prisma.loan.findUniqueOrThrow({ where: { id: loanId }, include: { book: true, user: true } });
 }

@@ -30,6 +30,18 @@ export function followUpText(name: string, title: string, daysLate: number) {
   );
 }
 
+/** Rekap keterlambatan untuk admin — dikirim sekali per hari, bukan per buku. */
+export function adminLateText(rows: { name: string; title: string; daysLate: number }[], total: number) {
+  const daftar = rows.map((r) => `• ${r.name} — "${r.title}" (telat ${r.daysLate} hari)`).join("\n");
+  const sisa = total - rows.length;
+  return (
+    `Rekap keterlambatan Bertumbuh Bareng Zaneva\n\n` +
+    `${total} buku belum dikembalikan:\n${daftar}` +
+    (sisa > 0 ? `\n• … dan ${sisa} lainnya` : "") +
+    `\n\nCek di panel admin untuk menindaklanjuti.`
+  );
+}
+
 export type JobOptions = {
   now?: Date;
   send?: SendText;
@@ -47,6 +59,10 @@ export type JobResult = {
   sent: number;
   failed: number;
   alreadyDone: number;
+  /** Rekap keterlambatan untuk admin: terkirim / gagal / dilewati. */
+  adminSent?: number;
+  adminFailed?: number;
+  adminSkipped?: string;
 };
 
 function defaultDelay() {
@@ -154,6 +170,56 @@ export async function runReminderJob(opts: JobOptions = {}): Promise<JobResult> 
   } finally {
     running = false;
   }
+
+  // Rekap keterlambatan untuk admin: sekali sehari, setelah pengingat peminjam selesai.
+  // Admin bisa meminjam juga, jadi dia tetap dapat pengingat pribadi di atas — ini tambahan
+  // supaya dia tahu kondisi seluruh tim tanpa harus buka panel.
+  try {
+    const lateLoans = await prisma.loan.findMany({
+      where: { returnedAt: null, dueDate: { lt: new Date(today + "T00:00:00Z") } },
+      include: { user: true, book: true },
+      orderBy: [{ dueDate: "asc" }],
+    });
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { phone: true },
+    });
+    if (lateLoans.length === 0) {
+      result.adminSkipped = "tidak ada buku terlambat";
+    } else if (admins.length === 0) {
+      result.adminSkipped = "belum ada admin";
+    } else {
+      const MAX_ROWS = 10;
+      const rows = lateLoans.slice(0, MAX_ROWS).map((l) => ({
+        name: l.user.name.trim() || displayPhone(l.user.phone),
+        title: l.book.title,
+        daysLate: Math.max(1, diffDays(keyFromDbDate(l.dueDate), today)),
+      }));
+      const text = adminLateText(rows, lateLoans.length);
+      let ok = 0;
+      let bad = 0;
+      for (const a of admins) {
+        // Penjaga dobel: satu rekap per admin per hari.
+        const key = `admin_late:${today}:${a.phone}`;
+        const claimed = await prisma.setting
+          .create({ data: { key, value: new Date().toISOString() } })
+          .catch(() => null);
+        if (!claimed) continue;
+        try {
+          await send(a.phone, text);
+          ok++;
+        } catch {
+          await prisma.setting.delete({ where: { key } }).catch(() => {});
+          bad++;
+        }
+      }
+      result.adminSent = ok;
+      result.adminFailed = bad;
+    }
+  } catch (e) {
+    result.adminSkipped = `gagal: ${String((e as Error).message ?? e).slice(0, 120)}`;
+  }
+
   return result;
 }
 

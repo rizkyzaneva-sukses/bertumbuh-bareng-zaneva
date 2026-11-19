@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "./api";
 
-export type AdminBook = { id: string; title: string; author: string; pages: number | null; category: string; synopsis: string; stock: number; active: number };
+export type BookIssues = { ringan: number; berat: number; hilang: number };
+export type AdminBook = { id: string; title: string; author: string; pages: number | null; category: string; synopsis: string; stock: number; active: number; issues?: BookIssues };
 
 /** Kategori baku — sengaja daftar tetap supaya rak tidak pecah jadi puluhan label. */
 import { CATEGORIES } from "@/lib/categories";
@@ -53,13 +54,14 @@ function BookForm({ initial, onDone, onCancel }: { initial?: AdminBook; onDone: 
   );
 }
 
-export function AdminBooks({ books }: { books: AdminBook[] }) {
+export function AdminBooks({ books, totalIssues = 0 }: { books: AdminBook[]; totalIssues?: number }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [err, setErr] = useState("");
   const shown = books.filter((b) => `${b.title} ${b.author}`.toLowerCase().includes(q.toLowerCase()));
+  const bermasalah = books.filter((b) => b.issues && (b.issues.ringan + b.issues.berat + b.issues.hilang) > 0);
 
   async function del(b: AdminBook) {
     if (!confirm(`Hapus "${b.title}"? Riwayat baca buku ini juga ikut terhapus dan tidak bisa dibatalkan.`)) return;
@@ -77,6 +79,24 @@ export function AdminBooks({ books }: { books: AdminBook[] }) {
       </div>
       {adding && <div className="card"><h2>Buku baru</h2><BookForm onDone={() => { setAdding(false); router.refresh(); }} onCancel={() => setAdding(false)} /></div>}
       {err && <div className="err" role="alert">{err}</div>}
+      {totalIssues > 0 && (
+        <div className="card" data-testid="damage-summary" style={{ borderLeft: "4px solid #d97706" }}>
+          <h2 style={{ marginTop: 0 }}>Buku bermasalah ({bermasalah.length} judul)</h2>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Tercatat dari pengembalian: {totalIssues} kejadian. Buku hilang sudah otomatis mengurangi stok.
+          </p>
+          <ul className="list">
+            {bermasalah.map((b) => (
+              <li key={b.id} data-testid="damaged-book">
+                <span style={{ flex: 1 }}>{b.title}</span>
+                {!!b.issues!.ringan && <span className="chip amber">{b.issues!.ringan} ringan</span>}
+                {!!b.issues!.berat && <span className="chip red">{b.issues!.berat} berat</span>}
+                {!!b.issues!.hilang && <span className="chip red">{b.issues!.hilang} hilang</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <p className="muted small">{shown.length} dari {books.length} judul</p>
       {shown.map((b) => (
         <div className="card" key={b.id} data-testid="admin-book">
@@ -87,7 +107,16 @@ export function AdminBooks({ books }: { books: AdminBook[] }) {
               <div className="row between">
                 <div style={{ minWidth: 0 }}>
                   <h3 style={{ margin: 0 }}>{b.title}</h3>
-                  <div className="small muted">{b.author} · {b.pages ? `${b.pages} hlm` : "halaman belum diisi"} · stok {b.stock}{b.active ? ` (${b.active} dipinjam)` : ""}</div>
+                  <div className="small muted">
+                    {b.author} · {b.pages ? `${b.pages} hlm` : "halaman belum diisi"} · stok {b.stock}{b.active ? ` (${b.active} dipinjam)` : ""}
+                  </div>
+                  {b.issues && (b.issues.ringan + b.issues.berat + b.issues.hilang) > 0 && (
+                    <div className="meta" style={{ marginTop: 4 }}>
+                      {!!b.issues.ringan && <span className="chip amber">{b.issues.ringan}× rusak ringan</span>}
+                      {!!b.issues.berat && <span className="chip red">{b.issues.berat}× rusak berat</span>}
+                      {!!b.issues.hilang && <span className="chip red">{b.issues.hilang}× hilang</span>}
+                    </div>
+                  )}
                 </div>
                 {b.category && <span className="chip">{b.category}</span>}
               </div>

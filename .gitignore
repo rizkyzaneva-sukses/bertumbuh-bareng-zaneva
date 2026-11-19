@@ -7,3 +7,6 @@ src/generated
 *.tsbuildinfo
 next-env.d.ts
 test-results
+
+# helper diagnostik lokal (encoding DB test)
+scripts/fix_testdb_encoding.mjs

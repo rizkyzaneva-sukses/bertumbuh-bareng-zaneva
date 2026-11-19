@@ -1,10 +1,15 @@
 import type { LoanStatus } from "@/generated/prisma/client";
 import { formatTanggalPendek } from "@/lib/dates";
+import { conditionChip, CONDITION_LABEL, type Condition } from "@/lib/conditions";
 
 export function StatusChip({ status }: { status: LoanStatus }) {
   if (status === "DIKEMBALIKAN") return <span className="chip green">Dikembalikan</span>;
   if (status === "TERLAMBAT") return <span className="chip red">Terlambat</span>;
   return <span className="chip amber">Dipinjam</span>;
+}
+
+export function ConditionChip({ condition }: { condition: Condition }) {
+  return <span className={`chip ${conditionChip(condition)}`}>{CONDITION_LABEL[condition]}</span>;
 }
 
 export function DueText({ dueKey }: { dueKey: string }) {

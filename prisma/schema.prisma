@@ -35,6 +35,14 @@ enum ReminderStatus {
   FAILED
 }
 
+/// Kondisi fisik sebuah eksemplar saat dikembalikan.
+enum BookCondition {
+  BAIK
+  RUSAK_RINGAN
+  RUSAK_BERAT
+  HILANG
+}
+
 model User {
   id                 String   @id @default(cuid())
   name               String
@@ -78,6 +86,10 @@ model Loan {
   status      LoanStatus   @default(DIPINJAM)
   /// Nonce untuk link pengembalian sekali pakai. Null = tidak ada link aktif.
   returnNonce String?
+  /// Kondisi buku saat dikembalikan. Null = belum dikembalikan / belum dicatat.
+  condition   BookCondition?
+  /// Catatan bebas admin soal kondisi (mis. "halaman 12 sobek").
+  conditionNote String?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   book        Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
   reminders   ReminderLog[]
