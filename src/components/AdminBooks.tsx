@@ -5,6 +5,10 @@ import { api } from "./api";
 
 export type AdminBook = { id: string; title: string; author: string; pages: number | null; category: string; synopsis: string; stock: number; active: number };
 
+/** Kategori baku — sengaja daftar tetap supaya rak tidak pecah jadi puluhan label. */
+import { CATEGORIES } from "@/lib/categories";
+export { CATEGORIES };
+
 function BookForm({ initial, onDone, onCancel }: { initial?: AdminBook; onDone: () => void; onCancel?: () => void }) {
   const [f, setF] = useState({
     title: initial?.title ?? "", author: initial?.author ?? "", pages: initial?.pages?.toString() ?? "",
@@ -12,7 +16,7 @@ function BookForm({ initial, onDone, onCancel }: { initial?: AdminBook; onDone: 
   });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
@@ -32,7 +36,13 @@ function BookForm({ initial, onDone, onCancel }: { initial?: AdminBook; onDone: 
         <div className="field"><label>Jumlah halaman</label><input inputMode="numeric" value={f.pages} onChange={set("pages")} name="pages" placeholder="Kosongkan kalau belum tahu" /></div>
         <div className="field"><label>Stok (eksemplar)</label><input inputMode="numeric" value={f.stock} onChange={set("stock")} name="stock" /></div>
       </div>
-      <div className="field"><label>Kategori</label><input value={f.category} onChange={set("category")} name="category" /></div>
+      <div className="field">
+        <label>Kategori</label>
+        <select value={f.category} onChange={set("category")} name="category">
+          <option value="">— pilih kategori —</option>
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
       <div className="field"><label>Sinopsis / bahasan buku</label><textarea value={f.synopsis} onChange={set("synopsis")} name="synopsis" /></div>
       {err && <div className="err" role="alert">{err}</div>}
       <div className="row">

@@ -3,6 +3,7 @@ import path from "node:path";
 import { prisma } from "./db";
 import { defaultPassword, hashPassword } from "./password";
 import { normalizePhone } from "./phone";
+import { normalizeCategory } from "./categories";
 
 export const SEED_ADMINS = [
   { name: "Rizky", phone: "081220210193" },
@@ -48,7 +49,14 @@ export async function seedBooks() {
     const exists = await prisma.book.findFirst({ where: { title: r.title } });
     if (exists) continue;
     await prisma.book.create({
-      data: { title: r.title, author: r.author, category: r.category, synopsis: synopsisFor(r), stock: 1, pages: null },
+      data: {
+        title: r.title,
+        author: r.author,
+        category: normalizeCategory(r.category),
+        synopsis: synopsisFor(r),
+        stock: 1,
+        pages: null,
+      },
     });
     added++;
   }

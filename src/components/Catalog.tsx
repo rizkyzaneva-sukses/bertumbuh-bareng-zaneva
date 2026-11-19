@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { BorrowButton } from "./LoanActions";
+import { categoriesInUse } from "@/lib/categories";
 
 export type CatalogBook = {
   id: string;
@@ -18,7 +19,7 @@ export type CatalogBook = {
 export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; slotsFull: boolean; isAdmin: boolean }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
-  const cats = useMemo(() => [...new Set(books.map((b) => b.category).filter(Boolean))].sort(), [books]);
+  const cats = useMemo(() => categoriesInUse(books.map((b) => b.category)), [books]);
   const shown = books.filter((b) => {
     const t = `${b.title} ${b.author} ${b.category} ${b.synopsis}`.toLowerCase();
     return (!q || t.includes(q.toLowerCase())) && (!cat || b.category === cat);
