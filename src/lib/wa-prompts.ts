@@ -147,7 +147,23 @@ export async function deliverPendingPrompts(
 
 export type PollResult = { checked: number; answered: number; replied: number };
 
-/** Kunci Setting untuk penanda pesan terakhir yang sudah diproses per orang. */
+/**
+ * Jendela waktu untuk mencari pertanyaan yang mungkin belum tercatat di DB.
+ *
+ * Kejadian nyata (Nov 2026): WA pertanyaan dikirim manual lewat skrip, jadi
+ * tidak ada baris `WaPrompt`. Bos membalas `2(100)` dan TIDAK ada reaksi apa
+ * pun — poller hanya mencocokkan dengan baris DB yang memang tidak ada.
+ * Sekarang balasan tetap ditangkap: pertanyaan terakhir yang dikirim ke nomor
+ * itu dicocokkan dari Riwayat WA, bukan hanya dari tabel.
+ */
+export const ORPHAN_WINDOW_MS = 3 * 86400000;
+
+/** Ambil judul buku dari teks pertanyaan yang kita kirim (untuk mencocokkan tanpa DB). */
+export function bookTitleFromPrompt(text: string): string | null {
+  const m = String(text ?? "").match(/Buku\s+"([^"]+)"/);
+  return m ? m[1].trim() : null;
+}
+
 const seenKey = (userId: string) => `wa_seen:${userId}`;
 
 /**
@@ -170,31 +186,98 @@ export async function pollPromptReplies(
     include: { user: true, book: true },
     orderBy: { sentAt: "asc" },
   });
-  if (pending.length === 0) return { checked: 0, answered: 0, replied: 0 };
 
-  const byUser = new Map<string, typeof pending>();
+  // Kandidat kedua: orang yang bukunya BARU dikembalikan. Pertanyaan mungkin
+  // tidak punya baris DB (mis. terkirim manual), tapi balasannya tetap harus
+  // tertangkap. Tanpa daftar ini, balasan seperti `2(100)` hilang diam-diam.
+  const recentlyReturned = await prisma.loan.findMany({
+    where: { returnedAt: { gte: new Date(now.getTime() - ORPHAN_WINDOW_MS) } },
+    select: { userId: true, user: { select: { id: true, name: true, phone: true } } },
+    distinct: ["userId"],
+  });
+
+  if (pending.length === 0 && recentlyReturned.length === 0) return { checked: 0, answered: 0, replied: 0 };
+
+  type Pending = (typeof pending)[number];
+  const byUser = new Map<string, Pending[]>();
   for (const p of pending) {
     const list = byUser.get(p.userId) ?? [];
     list.push(p);
     byUser.set(p.userId, list);
   }
+  // Nomor HP untuk kandidat yang tidak punya baris prompt.
+  const phoneOf = new Map<string, string>();
+  for (const p of pending) phoneOf.set(p.userId, p.user.phone);
+  for (const r of recentlyReturned) if (!phoneOf.has(r.userId)) phoneOf.set(r.userId, r.user.phone);
+  for (const r of recentlyReturned) if (!byUser.has(r.userId)) byUser.set(r.userId, []);
 
   const out: PollResult = { checked: 0, answered: 0, replied: 0 };
 
+  /**
+   * Tangani balasan yang TIDAK punya pasangan `WaPrompt`.
+   *
+   * Mencari pertanyaan terakhir yang kita kirim ke nomor itu lewat Riwayat WA,
+   * membaca judul bukunya, lalu mencocokkan dengan buku di rak. Ini yang
+   * menyelamatkan balasan Bos pada kiriman manual — sebelumnya hilang diam-diam.
+   */
+  async function answerOrphan(userId: string, phone: string, body: string, tsMs: number): Promise<boolean> {
+    const parsed = parseAnswer(body);
+    if (!parsed) return false;
+    let hist;
+    try {
+      hist = await fetchMessages(phone, tsMs - ORPHAN_WINDOW_MS);
+    } catch {
+      return false;
+    }
+    // Pertanyaan terakhir SEBELUM balasan ini.
+    const question = hist
+      .filter((m) => m.fromMe && m.timestamp * 1000 < tsMs && /Beres bacanya\?/i.test(m.body))
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+    if (!question) return false;
+
+    const title = bookTitleFromPrompt(question.body);
+    if (!title) return false;
+    const book = await prisma.book.findFirst({ where: { title }, select: { id: true } });
+    if (!book) return false;
+
+    if (parsed.answer === "1") await markFinished(userId, book.id, true, now);
+    else if (parsed.page !== undefined) await saveProgress(userId, book.id, parsed.page, now);
+    else await markFinished(userId, book.id, false, now);
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    try {
+      await send(
+        phone,
+        parsed.answer === "1"
+          ? ackFinishText(title)
+          : ackUnfinishedText(title, parsed.page, null),
+      );
+      out.replied++;
+    } catch (e) {
+      console.error("[wa-prompt] gagal kirim konfirmasi orphan:", String((e as Error).message ?? e));
+    }
+    out.answered++;
+    console.log(
+      `[wa-prompt] balasan tanpa baris DB dicocokkan: ${user?.name ?? userId} · ${title} · ${body.trim().slice(0, 20)}`,
+    );
+    return true;
+  }
+
   for (const [userId, prompts] of byUser) {
-    const user = prompts[0].user;
+    const phone = phoneOf.get(userId);
+    if (!phone) continue;
     out.checked++;
 
     const seen = await prisma.setting.findUnique({ where: { key: seenKey(userId) } });
     const seenTs = seen ? Number(seen.value) || 0 : 0;
     // Batas bawah: yang lebih baru antara pertanyaan pertama & pesan terakhir
     // yang sudah diproses. Dikurangi 120 detik untuk toleransi jam WAHA.
-    const oldestSent = Math.min(...prompts.map((p) => (p.sentAt as Date).getTime()));
-    const sinceMs = Math.max(oldestSent, seenTs ? seenTs + 1000 : 0) - 120000;
+    const oldestSent = prompts.length ? Math.min(...prompts.map((p) => (p.sentAt as Date).getTime())) : 0;
+    const sinceMs = Math.max(oldestSent || now.getTime() - ORPHAN_WINDOW_MS, seenTs ? seenTs + 1000 : 0) - 120000;
 
     let messages;
     try {
-      messages = await fetchMessages(user.phone, sinceMs);
+      messages = await fetchMessages(phone, sinceMs);
     } catch (e) {
       console.error("[wa-prompt] gagal baca pesan:", String((e as Error).message ?? e));
       continue;
@@ -214,7 +297,13 @@ export async function pollPromptReplies(
       // Terapkan ke pertanyaan tertua yang masih terbuka — konfirmasi ke
       // anggota menyebut judulnya, jadi tidak ada tebak-tebakan.
       const target = prompts.find((p) => !p.answeredAt);
-      if (!target) break;
+      if (!target) {
+        // Sudah tidak ada pertanyaan terbuka di DB untuk orang ini. Jangan
+        // dibuang: coba cocokkan lewat Riwayat WA (kiriman manual / baris DB
+        // hilang). Tanpa ini balasan seperti `2(100)` hilang diam-diam.
+        await answerOrphan(userId, phone, msg.body, msg.timestamp * 1000);
+        continue;
+      }
 
       const claimed = await prisma.waPrompt.updateMany({
         where: { id: target.id, answeredAt: null },
@@ -238,7 +327,7 @@ export async function pollPromptReplies(
 
       try {
         await send(
-          user.phone,
+          phone,
           parsed.answer === "1"
             ? ackFinishText(target.book.title)
             : ackUnfinishedText(target.book.title, parsed.page, target.book.pages),

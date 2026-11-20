@@ -26,7 +26,9 @@ export function firstReminderText(name: string, title: string, dueKey: string, u
 export function followUpText(name: string, title: string, daysLate: number) {
   return (
     `Halo ${name}, buku "${title}" sudah lewat jatuh tempo ${daysLate} hari.\n\n` +
-    `Mohon segera dikembalikan ya, lalu tandai sudah balik lewat aplikasi Bertumbuh Bareng Zaneva (menu Pinjaman Saya) atau kabari admin.\n\n` +
+    `Kalau masih mau lanjut baca, buka app Bertumbuh Bareng Zaneva → menu Riwayat → ketuk "Perpanjang". ` +
+    `Tidak perlu balikin dulu.\n\n` +
+    `Kalau sudah selesai, balikin bukunya lalu tandai "Balikin" di app (atau lewat link yang kami kirim).\n\n` +
     `Terima kasih 🙏`
   );
 }

@@ -261,33 +261,36 @@ describe("alur end-to-end lewat HTTP", () => {
   });
 
   it("dashboard: angka & ranking sesuai data", async () => {
-    // Deep Work dihapus bersama riwayatnya. Sinta pinjam & balikin satu judul lagi supaya selesai 2 judul
-    // (Atomic Habits, Getting Things Done); Budi selesai 1 (Essentialism); belum ada yang sedang membaca.
+    // Aturan baru: "selesai dibaca" HANYA dihitung kalau ditandai beres
+    // (lewat app atau balasan WA "1"), BUKAN dari buku yang sudah dikembalikan.
+    // Sinta sebelumnya mengembalikan 1 buku; tandai beres lewat API progres.
     const gtd = ((await admin.api("/api/books", "GET")).body.books as any[]).find((b) => b.title === "Getting Things Done");
     const lg = await sinta.api("/api/loans", "POST", { bookId: gtd.id });
     expect(lg.status).toBe(201);
     expect((await sinta.html("/dashboard?tab=orang")).text).toContain("1 dibaca");
     expect((await sinta.html("/")).text).toMatch(/data-testid="slot-used">1\/2/);
     expect((await sinta.api(`/api/loans/${lg.body.loan.id}/return`)).status).toBe(200);
+    // Kembalikan buku saja TIDAK membuatnya "selesai".
+    expect((await sinta.html("/dashboard?tab=ranking")).text).not.toContain("data-testid=\"rank-row\"");
+    // Tandai beres -> baru masuk dashboard.
+    expect((await sinta.api("/api/progress", "POST", { bookId: gtd.id, done: true })).status).toBe(200);
+
     const r = await sinta.html("/dashboard?tab=ranking");
     expect(r.status).toBe(200);
     const rows = [...r.text.matchAll(/data-testid="rank-row"[^>]*>(.*?)<\/li>/g)].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
-    expect(rows).toEqual(["1 Sinta Dewi (kamu) 2 buku", "2 Budi 1 buku"]);
+    expect(rows).toEqual(["1 Sinta Dewi (kamu) 1 buku"]);
     const stat = (label: string) => r.text.match(new RegExp(`<b>(\\d+)</b><span>${label}</span>`))?.[1];
     expect(stat("Judul buku")).toBe("37"); // 36 + Buku Baru
-    expect(stat("Sedang dibaca")).toBe("0");
-    expect(stat("Selesai dibaca")).toBe("3");
+    expect(stat("Sedang dipinjam")).toBe("0");
+    expect(stat("Beres dibaca")).toBe("1");
     expect(stat("Terlambat")).toBe("0");
-    const orang = (await sinta.html("/dashboard?tab=orang")).text;
-    expect(orang).toContain("Sinta Dewi");
-    expect(orang).toContain("2 selesai");
-    const buku = (await sinta.html("/dashboard?tab=buku")).text;
-    expect(buku).toContain("Atomic Habits");
-    expect(buku).toContain("1 pembaca");
-    // beranda: slot & jumlah selesai
+    // halaman baru bisa dibuka
+    expect((await sinta.html("/riwayat")).status).toBe(200);
+    expect((await sinta.html("/panduan")).text).toContain("Beres bacanya?");
+    // beranda: slot & jumlah selesai (dari penanda beres, bukan pengembalian)
     const home = (await sinta.html("/")).text;
     expect(home).toMatch(/data-testid="slot-used">0\/2/);
-    expect(home).toMatch(/data-testid="my-finished">2</);
+    expect(home).toMatch(/data-testid="my-finished">1</);
   });
 
   it("halaman PWA: manifest, ikon, service worker, meta apple", async () => {

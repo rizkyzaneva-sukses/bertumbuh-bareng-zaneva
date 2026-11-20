@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { borrowBook, effectiveStatus, returnLoan, AppError } from "@/lib/loans";
-import { runReminderJob } from "@/lib/reminders";
+import { runReminderJob, followUpText } from "@/lib/reminders";
 import { verifyReturnToken } from "@/lib/tokens";
 import { getDashboard } from "@/lib/stats";
 import { markFinished, renewLoan, saveProgress, RENEW_LIMIT } from "@/lib/reading";
@@ -377,6 +377,14 @@ describe("perpanjangan", () => {
 });
 
 describe("pertanyaan beres-baca via WA", () => {
+  it("pengingat keterlambatan menawarkan PERPANJANG, tidak menyuruh balikin dulu", () => {
+    const t = followUpText("Tia", "Atomic Habits", 2);
+    expect(t).toContain("Perpanjang");
+    expect(t).toContain("Tidak perlu balikin dulu");
+    // Kalimat lama yang dikeluhkan Bos tidak boleh muncul lagi
+    expect(t).not.toContain("Mohon segera dikembalikan ya, lalu tandai");
+  });
+
   it("teks pertanyaannya sesuai permintaan Bos (ketik 1 / ketik 2 + halaman)", () => {
     const t = afterReturnText("Tia", "Atomic Habits", 320);
     expect(t).toContain("Beres bacanya?");
@@ -555,6 +563,41 @@ describe("pertanyaan beres-baca via WA", () => {
     const pagi = await deliverPendingPrompts({ now: wib("2026-11-17", "08:05") });
     expect(pagi.sent).toBe(1);
     expect(waha.calls).toHaveLength(1);
+  });
+
+  it("balasan tanpa baris WaPrompt tetap diproses (kasus nyata: kiriman manual)", async () => {
+    const u = await prisma.user.create({ data: { name: "Hana", phone: "6281400000001", passwordHash: "x" } });
+    const book = await prisma.book.create({ data: { title: "Buku Manual", author: "U", pages: 200, stock: 1 } });
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, book.id, t0);
+    await returnLoan(loan.id, "USER", t0);
+    // HAPUS baris prompt -> meniru pertanyaan yang dikirim di luar app.
+    await prisma.waPrompt.deleteMany({ where: { loanId: loan.id } });
+    expect(await prisma.waPrompt.count()).toBe(0);
+
+    waha.calls.length = 0;
+    const sentTs = Math.floor(t0.getTime() / 1000);
+    const fakeFetch = async () => [
+      // Riwayat: pertanyaan yang KITA kirim (tanpa baris DB) lalu balasan anggota.
+      {
+        id: "q1",
+        timestamp: sentTs,
+        fromMe: true,
+        body: afterReturnText("Hana", "Buku Manual", 200),
+        chatId: "6281400000001@c.us",
+      },
+      { id: "a1", timestamp: sentTs + 90, fromMe: false, body: "2(100)", chatId: "6281400000001@c.us" },
+    ];
+
+    const r = await pollPromptReplies({ now: new Date((sentTs + 90) * 1000), fetchMessages: fakeFetch as never });
+    expect(r.answered).toBe(1);
+    expect(r.replied).toBe(1);
+
+    // Halaman 100 tersimpan, TIDAK dianggap selesai
+    const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: book.id } } });
+    expect(p.lastPage).toBe(100);
+    expect(p.status).toBe("SEDANG_DIBACA");
+    expect(waha.calls[0].body.text).toContain("halaman 100");
   });
 
   it("pesan yang bukan 1/2 diabaikan (tidak menandai apa pun)", async () => {
