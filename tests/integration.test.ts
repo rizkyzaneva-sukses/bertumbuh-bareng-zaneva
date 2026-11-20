@@ -533,6 +533,30 @@ describe("pertanyaan beres-baca via WA", () => {
     expect(p.status).toBe("SELESAI");
   });
 
+  it("pertanyaan TIDAK dikirim jam 2 pagi (ikut jendela 08.00-20.00 WIB)", async () => {
+    const { u, b } = await mk();
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, b.id, t0);
+    await returnLoan(loan.id, "USER", t0);
+    waha.calls.length = 0;
+
+    // Buku dikembalikan jam 02.00 dini hari: antre, tapi jangan kirim.
+    const night = await deliverPendingPrompts({ now: wib("2026-11-17", "02:00") });
+    expect(night.sent).toBe(0);
+    expect(night.skipped).toContain("08.00");
+    expect(waha.calls).toHaveLength(0);
+
+    // Lewat jam 20.00 juga tidak.
+    const late = await deliverPendingPrompts({ now: wib("2026-11-17", "21:30") });
+    expect(late.sent).toBe(0);
+    expect(waha.calls).toHaveLength(0);
+
+    // Pagi berikutnya baru terkirim.
+    const pagi = await deliverPendingPrompts({ now: wib("2026-11-17", "08:05") });
+    expect(pagi.sent).toBe(1);
+    expect(waha.calls).toHaveLength(1);
+  });
+
   it("pesan yang bukan 1/2 diabaikan (tidak menandai apa pun)", async () => {
     const { u, b } = await mk();
     const t0 = wib("2026-11-16", "09:00");

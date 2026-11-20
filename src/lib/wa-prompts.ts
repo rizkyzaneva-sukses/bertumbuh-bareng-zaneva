@@ -2,6 +2,11 @@ import { prisma } from "./db";
 import { markFinished, saveProgress } from "./reading";
 import { wahaSendText, wahaFetchMessages, type SendText } from "./waha";
 import { displayPhone } from "./phone";
+import { jakartaHour } from "./dates";
+
+/** Jam kirim pertanyaan (WIB) — sama dengan jendela pengingat jatuh tempo. */
+export const SEND_FROM_HOUR = 8;
+export const SEND_UNTIL_HOUR = 20;
 
 /** Pertanyaan kedaluwarsa setelah 7 hari — lewat dari itu tidak dianggap lagi. */
 export const PROMPT_TTL_MS = 7 * 86400000;
@@ -97,14 +102,25 @@ export async function queueAfterReturnPrompt(
   });
 }
 
-export type DeliverResult = { sent: number; failed: number };
+export type DeliverResult = { sent: number; failed: number; skipped?: string };
 
-/** Kirim semua pertanyaan yang belum terkirim. Aman diulang (idempoten per baris). */
+/**
+ * Kirim semua pertanyaan yang belum terkirim. Aman diulang (idempoten per baris).
+ *
+ * Menghormati jendela jam kirim yang SAMA dengan pengingat (08.00–20.00 WIB).
+ * Tanpa ini, buku yang dikembalikan tengah malam akan membangunkan orangnya
+ * dengan pertanyaan "beres bacanya?" jam 2 pagi.
+ */
 export async function deliverPendingPrompts(
-  opts: { now?: Date; send?: SendText; limit?: number } = {},
+  opts: { now?: Date; send?: SendText; limit?: number; ignoreWindow?: boolean } = {},
 ): Promise<DeliverResult> {
   const now = opts.now ?? new Date();
   const send = opts.send ?? wahaSendText;
+  if (!opts.ignoreWindow) {
+    const h = jakartaHour(now);
+    if (h < SEND_FROM_HOUR) return { sent: 0, failed: 0, skipped: "belum jam 08.00 WIB" };
+    if (h >= SEND_UNTIL_HOUR) return { sent: 0, failed: 0, skipped: "lewat jendela kirim (>= 20.00 WIB)" };
+  }
   const due = await prisma.waPrompt.findMany({
     where: { sentAt: null, answeredAt: null, expiresAt: { gt: now } },
     include: { user: true, book: true },
