@@ -606,6 +606,44 @@ describe("pertanyaan beres-baca via WA", () => {
     expect(waha.calls[0].body.text).toContain("hlm 100");
   });
 
+  it("pesan LAMA tidak bisa menjawab pertanyaan BARU (cegah balasan hantu)", async () => {
+    // Kejadian nyata: prompt baru terkirim 03:16, lalu otomatis terjawab
+    // memakai pesan `2(100)` dari 02:59 yang sudah lewat. Bos menerima
+    // konfirmasi padahal tidak membalas apa pun.
+    const u = await prisma.user.create({ data: { name: "Indra", phone: "6281500000001", passwordHash: "x" } });
+    const book = await prisma.book.create({ data: { title: "Buku Hantu", author: "T", pages: 300, stock: 1 } });
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, book.id, t0);
+    await returnLoan(loan.id, "USER", t0);
+    await deliverPendingPrompts({ now: t0 });
+    const prompt = await prisma.waPrompt.findFirstOrThrow({ where: { loanId: loan.id } });
+    const sentTs = Math.floor((prompt.sentAt as Date).getTime() / 1000);
+
+    waha.calls.length = 0;
+    const fakeFetch = async () => [
+      // Balasan yang datang SEBELUM pertanyaan dikirim (mis. sisa percakapan lama)
+      { id: "old", timestamp: sentTs - 600, fromMe: false, body: "2(100)", chatId: "6281500000001@c.us" },
+    ];
+
+    const r = await pollPromptReplies({ now: new Date((sentTs + 60) * 1000), fetchMessages: fakeFetch as never });
+    // TIDAK boleh ada jawaban, TIDAK boleh ada konfirmasi terkirim.
+    expect(r.answered).toBe(0);
+    expect(r.replied).toBe(0);
+    expect(waha.calls).toHaveLength(0);
+    expect(await prisma.readingProgress.count()).toBe(0);
+
+    // Sekarang balasan yang benar-benar SESUDAH pertanyaan → baru diproses.
+    const fakeFetch2 = async () => [
+      { id: "old", timestamp: sentTs - 600, fromMe: false, body: "2(100)", chatId: "6281500000001@c.us" },
+      { id: "new", timestamp: sentTs + 120, fromMe: false, body: "2(50)", chatId: "6281500000001@c.us" },
+    ];
+    // seenTs belum bergerak karena tidak ada yang diproses sebelumnya
+    const r2 = await pollPromptReplies({ now: new Date((sentTs + 130) * 1000), fetchMessages: fakeFetch2 as never });
+    expect(r2.answered).toBe(1);
+    const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: book.id } } });
+    expect(p.lastPage).toBe(50);
+  });
+
   it("pesan yang bukan 1/2 diabaikan (tidak menandai apa pun)", async () => {
     const { u, b } = await mk();
     const t0 = wib("2026-11-16", "09:00");

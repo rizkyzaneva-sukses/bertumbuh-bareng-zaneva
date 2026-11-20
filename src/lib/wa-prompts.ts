@@ -264,10 +264,11 @@ export async function pollPromptReplies(
 
     const seen = await prisma.setting.findUnique({ where: { key: seenKey(userId) } });
     const seenTs = seen ? Number(seen.value) || 0 : 0;
-    // Batas bawah: yang lebih baru antara pertanyaan pertama & pesan terakhir
-    // yang sudah diproses. Dikurangi 120 detik untuk toleransi jam WAHA.
-    const oldestSent = prompts.length ? Math.min(...prompts.map((p) => (p.sentAt as Date).getTime())) : 0;
-    const sinceMs = Math.max(oldestSent || now.getTime() - ORPHAN_WINDOW_MS, seenTs ? seenTs + 1000 : 0) - 120000;
+    // Ambil riwayat cukup jauh ke belakang, lalu SETIAP pertanyaan disaring
+    // sendiri-sendiri: balasan sah hanya yang datang SESUDAH pertanyaannya.
+    // Ini yang mencegah "balasan hantu" — pesan lama dipakai menjawab
+    // pertanyaan baru lalu mengirim konfirmasi yang tidak diminta.
+    const sinceMs = now.getTime() - ORPHAN_WINDOW_MS;
 
     let messages;
     try {
@@ -279,23 +280,29 @@ export async function pollPromptReplies(
 
     // Hanya pesan masuk (bukan yang kita kirim), urut lama -> baru.
     const incoming = messages
-      .filter((m) => !m.fromMe && m.timestamp * 1000 > seenTs)
+      .filter((m) => !m.fromMe)
       .sort((a, b) => a.timestamp - b.timestamp);
 
     let newestSeen = seenTs;
     for (const msg of incoming) {
-      newestSeen = Math.max(newestSeen, msg.timestamp * 1000);
+      const tsMs = msg.timestamp * 1000;
+      // Sudah pernah diproses pada siklus sebelumnya.
+      if (tsMs <= seenTs) continue;
+      newestSeen = Math.max(newestSeen, tsMs);
+
       const parsed = parseAnswer(msg.body);
       if (!parsed) continue;
 
-      // Terapkan ke pertanyaan tertua yang masih terbuka — konfirmasi ke
-      // anggota menyebut judulnya, jadi tidak ada tebak-tebakan.
-      const target = prompts.find((p) => !p.answeredAt);
+      // Pertanyaan tertua yang MASIH terbuka DAN dikirim sebelum pesan ini.
+      // `sentAt` wajib jadi batas bawah: balasan tidak boleh mendahului tanya.
+      const target = prompts
+        .filter((p) => !p.answeredAt && (p.sentAt as Date).getTime() <= tsMs)
+        .sort((a, b) => (a.sentAt as Date).getTime() - (b.sentAt as Date).getTime())[0];
+
       if (!target) {
-        // Sudah tidak ada pertanyaan terbuka di DB untuk orang ini. Jangan
-        // dibuang: coba cocokkan lewat Riwayat WA (kiriman manual / baris DB
-        // hilang). Tanpa ini balasan seperti `2(100)` hilang diam-diam.
-        await answerOrphan(userId, phone, msg.body, msg.timestamp * 1000);
+        // Tidak ada pertanyaan terbuka yang lebih tua dari pesan ini. Coba
+        // cocokkan lewat Riwayat WA (kiriman manual / baris DB hilang).
+        await answerOrphan(userId, phone, msg.body, tsMs);
         continue;
       }
 
