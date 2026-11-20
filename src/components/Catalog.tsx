@@ -14,6 +14,8 @@ export type CatalogBook = {
   stock: number;
   available: number;
   mine: boolean;
+  /** Nama orang yang sedang memegang buku ini (kosong kalau tersedia). */
+  holders: string[];
 };
 
 export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; slotsFull: boolean; isAdmin: boolean }) {
@@ -45,6 +47,11 @@ export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; s
               {b.category && <span className="chip">{b.category}</span>}
               {b.mine ? <span className="chip amber">Kamu pinjam</span> : b.available > 0 ? <span className="chip green">Tersedia {b.available}/{b.stock}</span> : <span className="chip red">Sedang dipinjam semua</span>}
             </div>
+            {b.holders.length > 0 && (
+              <div className="small muted" data-testid="holders">
+                {b.mine && b.holders.length === 1 ? "Dipegang kamu" : `Dipegang: ${b.holders.join(", ")}`}
+              </div>
+            )}
             {b.synopsis && <p className="syn" style={{ margin: 0 }}>{b.synopsis}</p>}
             <div className="row">
               <BorrowButton bookId={b.id} title={b.title} disabled={b.mine || b.available < 1 || slotsFull} label={b.mine ? "Sedang dipinjam" : "Pinjam"} />

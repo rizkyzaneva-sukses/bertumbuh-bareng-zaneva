@@ -75,9 +75,34 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   ))}
                 </ul>
               )}
-              <h3>Sudah dibaca</h3>
+              <h3>✅ Sudah selesai dibaca</h3>
               {u.finished.length === 0 ? <p className="muted small">Belum ada.</p> : (
                 <ul className="list">{u.finished.map((b) => <li key={b.id}>{b.title} <span className="small muted">· {b.author}</span></li>)}</ul>
+              )}
+              {/* Buku yang sudah kembali ke rak sengaja DILIPAT: yang dicari
+                  di dashboard adalah "sekarang dia sedang baca apa". */}
+              {u.returned.length > 0 && (
+                <details data-testid="person-returned" style={{ marginTop: 10 }}>
+                  <summary>
+                    <span>📦 Sudah dikembalikan</span>
+                    <span className="chip">{u.returned.length} buku</span>
+                  </summary>
+                  <div className="inner">
+                    <ul className="list">
+                      {u.returned.map((b) => (
+                        <li key={b.id}>
+                          {b.title}
+                          <span className="small muted">
+                            {" "}· {b.author}
+                            {b.lastReturnedAt ? ` · kembali ${formatTanggalPendek(b.lastReturnedAt.toISOString().slice(0, 10))}` : ""}
+                            {b.times > 1 ? ` · ${b.times}×` : ""}
+                          </span>{" "}
+                          {b.finished ? <span className="chip green">✓</span> : <span className="chip amber">belum tuntas</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </details>
               )}
             </div>
           </details>
@@ -88,16 +113,29 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <details key={b.id} data-testid="book-stat">
             <summary>
               <span>{b.title}</span>
-              <span className="chip green">{b.readers.length} pembaca</span>
-              {b.readingNow.length > 0 && <span className="chip amber">{b.readingNow.length} dibaca</span>}
+              {b.readingNow.length > 0 && (
+                <span className="chip amber" data-testid="now-reading-count">{b.readingNow.length} dipegang</span>
+              )}
+              <span className="chip green">{b.readers.length} selesai</span>
             </summary>
             <div className="inner">
               <div className="small muted">{b.author} · tersedia {b.available}/{b.stock}</div>
-              <h3 style={{ marginTop: 8 }}>Sedang dibaca</h3>
-              {b.readingNow.length === 0 ? <p className="muted small">Tidak ada.</p> : (
-                <ul className="list">{b.readingNow.map((r) => <li key={r.userId}>{r.name} <StatusChip status={r.status} /></li>)}</ul>
+              {/* Jawaban langsung untuk "buku A lagi dipinjam siapa?" */}
+              <h3 style={{ marginTop: 8 }}>Sedang dipegang</h3>
+              {b.readingNow.length === 0 ? <p className="muted small">Tersedia di rak — belum dipegang siapa pun.</p> : (
+                <ul className="list">
+                  {b.readingNow.map((r) => (
+                    <li key={r.userId}>
+                      <b>{r.name}</b> <StatusChip status={r.status} />
+                      <span className="small muted"> · tempo {formatTanggalPendek(r.dueKey)}</span>
+                      {r.progress && r.progress.lastPage > 0 && (
+                        <span className="small muted"> · hlm {r.progress.lastPage}{b.pagesTotal ? `/${b.pagesTotal}` : ""} ({r.progress.percent}%)</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )}
-              <h3>Sudah baca</h3>
+              <h3>Sudah selesai dibaca</h3>
               {b.readers.length === 0 ? <p className="muted small">Belum ada.</p> : <p>{b.readers.map((r) => r.name).join(", ")}</p>}
             </div>
           </details>

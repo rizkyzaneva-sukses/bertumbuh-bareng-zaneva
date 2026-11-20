@@ -120,23 +120,30 @@ export default async function Beranda() {
             <h2 style={{ margin: 0 }}>Riwayat bacaku</h2>
             <Link href="/riwayat" className="small">Semua</Link>
           </div>
-          <div className="card">
-            <ul className="list">
-              {done.slice(0, 10).map((l) => {
-                const p = prog.get(l.bookId);
-                return (
-                  <li key={l.id}>
-                    <b>{l.book.title}</b> <span className="small muted">· {l.book.author}</span>
-                    {p?.status === "SELESAI" ? (
-                      <> <span className="chip green">✓ Selesai</span></>
-                    ) : (
-                      <span className="small muted"> · belum ditandai beres</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          {/* Default TERTUTUP — yang penting di beranda adalah buku di tangan. */}
+          <details data-testid="home-returned-collapse">
+            <summary>
+              <span>📦 Sudah dikembalikan</span>
+              <span className="chip">{done.length} buku</span>
+            </summary>
+            <div className="inner">
+              <ul className="list">
+                {done.slice(0, 30).map((l) => {
+                  const p = prog.get(l.bookId);
+                  return (
+                    <li key={l.id}>
+                      <b>{l.book.title}</b> <span className="small muted">· {l.book.author}</span>
+                      {p?.status === "SELESAI" ? (
+                        <> <span className="chip green">✓ Selesai</span></>
+                      ) : (
+                        <span className="small muted"> · belum ditandai beres</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </details>
         </>
       )}
     </>

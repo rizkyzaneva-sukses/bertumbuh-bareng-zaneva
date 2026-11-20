@@ -58,6 +58,34 @@ export async function getDashboard(now = new Date()) {
         renewCount: l.renewCount,
         progress: progByUserBook.get(`${u.id}:${l.bookId}`) ?? null,
       }));
+    // Buku yang SUDAH kembali ke rak, dikelompokkan per buku (bukan per transaksi).
+    // Dipisah dari `reading` supaya UI bisa menyembunyikannya di balik collapse:
+    // yang dicari orang sehari-hari adalah "sedang kupinjam", bukan tumpukan riwayat.
+    const readingIds = new Set(reading.map((r) => r.id));
+    const returnedMap = new Map<
+      string,
+      { id: string; title: string; author: string; lastReturnedAt: Date | null; times: number }
+    >();
+    for (const l of mine) {
+      if (!l.returnedAt) continue;
+      const cur = returnedMap.get(l.bookId);
+      if (!cur) {
+        returnedMap.set(l.bookId, {
+          id: l.bookId,
+          title: l.book.title,
+          author: l.book.author,
+          lastReturnedAt: l.returnedAt,
+          times: 1,
+        });
+      } else {
+        cur.times += 1;
+        if (!cur.lastReturnedAt || l.returnedAt > cur.lastReturnedAt) cur.lastReturnedAt = l.returnedAt;
+      }
+    }
+    const returned = [...returnedMap.values()]
+      .filter((b) => !readingIds.has(b.id))
+      .map((b) => ({ ...b, finished: progByUserBook.get(`${u.id}:${b.id}`)?.status === "SELESAI" }))
+      .sort((a, b) => (b.lastReturnedAt?.getTime() ?? 0) - (a.lastReturnedAt?.getTime() ?? 0));
     // Buku yang sedang dipegang tapi progresnya masih berjalan — ditampilkan
     // terpisah supaya jelas mana yang "lagi dibaca" vs "sedang dipinjam".
     return {
@@ -66,6 +94,7 @@ export async function getDashboard(now = new Date()) {
       finished: finishedBooks,
       finishedCount: finishedBooks.length,
       reading,
+      returned,
     };
   });
 
@@ -90,6 +119,7 @@ export async function getDashboard(now = new Date()) {
       title: b.title,
       author: b.author,
       category: b.category,
+      pagesTotal: b.pages,
       stock: b.stock,
       available: Math.max(0, b.stock - readingNow.length),
       readers: [...readerMap.values()],

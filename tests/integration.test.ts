@@ -267,6 +267,57 @@ describe("dashboard", () => {
     expect(d.perUser.find((u) => u.name === "Cici")!.finishedCount).toBe(0);
   });
 
+  it("riwayat per orang: buku yang sudah kembali DIPISAH dari yang sedang dipegang", async () => {
+    const u = await prisma.user.create({ data: { name: "Eka", phone: "6281000000011", passwordHash: "x" } });
+    const b = await prisma.book.create({ data: { title: "Selesai Sekali", author: "Z", pages: 100, stock: 1 } });
+    const t0 = wib("2026-11-16", "09:00");
+    // Dipinjam, dibaca tuntas, lalu dikembalikan.
+    const loan = await borrowBook(u.id, b.id, t0);
+    await saveProgress(u.id, b.id, 100, t0);
+    await returnLoan(loan.id, "USER", t0);
+
+    const d = await getDashboard(wib("2026-11-17", "09:00"));
+    const me = d.perUser.find((x) => x.name === "Eka")!;
+    // Tidak boleh muncul dua kali: bukan di `reading` (sudah kembali) ...
+    expect(me.reading).toHaveLength(0);
+    // ... tapi tercatat di `returned`, dan ditandai selesai.
+    expect(me.returned.map((x) => x.title)).toEqual(["Selesai Sekali"]);
+    expect(me.returned[0].finished).toBe(true);
+    expect(me.returned[0].times).toBe(1);
+  });
+
+  it("buku yang sedang dipegang TIDAK muncul di daftar 'sudah dikembalikan'", async () => {
+    const u = await prisma.user.create({ data: { name: "Fajar", phone: "6281000000012", passwordHash: "x" } });
+    const b = await prisma.book.create({ data: { title: "Masih Dipegang", author: "W", pages: 120, stock: 1 } });
+    const t0 = wib("2026-11-16", "09:00");
+    // Pinjam 2x berturut-turut: yang pertama kembali, yang kedua masih di tangan.
+    await returnLoan((await borrowBook(u.id, b.id, t0)).id, "USER", t0);
+    await borrowBook(u.id, b.id, t0);
+
+    const d = await getDashboard(wib("2026-11-17", "09:00"));
+    const me = d.perUser.find((x) => x.name === "Fajar")!;
+    expect(me.reading.map((x) => x.title)).toEqual(["Masih Dipegang"]);
+    // Yang sudah kembali tidak boleh dobel di sini — mencegah buku muncul
+    // di dua daftar sekaligus (keluhan asli: "ini UI nya bingung duh").
+    expect(me.returned).toHaveLength(0);
+  });
+
+  it("per buku menyebut SIAPA yang sedang memegang", async () => {
+    const a = await prisma.user.create({ data: { name: "Gita", phone: "6281000000013", passwordHash: "x" } });
+    const b = await prisma.user.create({ data: { name: "Hadi", phone: "6281000000014", passwordHash: "x" } });
+    const bk = await prisma.book.create({ data: { title: "Dipakai Berdua", author: "V", pages: 90, stock: 2 } });
+    const t0 = wib("2026-11-16", "09:00");
+    await borrowBook(a.id, bk.id, t0);
+    await borrowBook(b.id, bk.id, t0);
+
+    const d = await getDashboard(wib("2026-11-16", "10:00"));
+    const row = d.perBook.find((x) => x.title === "Dipakai Berdua")!;
+    expect(row.readingNow.map((r) => r.name).sort()).toEqual(["Gita", "Hadi"]);
+    expect(row.available).toBe(0);
+    // Halaman total ikut terbawa supaya UI bisa menampilkan "hlm 40/90".
+    expect(row.pagesTotal).toBe(90);
+  });
+
   it("buku belum selesai dibaca tetap terhitung meski sudah dikembalikan", async () => {
     const u = await prisma.user.create({ data: { name: "Dewi", phone: "6281000000009", passwordHash: "x" } });
     const b = await prisma.book.create({ data: { title: "Tebal", author: "Y", pages: 400, stock: 1 } });
