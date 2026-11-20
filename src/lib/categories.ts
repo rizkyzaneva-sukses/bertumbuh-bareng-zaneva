@@ -16,6 +16,7 @@ export const CATEGORIES = [
   "Keuangan",
   "Spiritual",
   "Parenting",
+  "Pengembangan Diri",
   "Fiksi",
   "Komik",
   "Biografi",
@@ -37,6 +38,10 @@ const RULES: Array<[Category, string[]]> = [
   ["Keuangan", ["keuangan", "finansial", "investasi", "uang"]],
   ["Spiritual", ["spiritual", "agama", "islam", "quran", "qur'an", "tauhid", "akhlak", "sunnah", "nabi", "sahabat", "hamba"]],
   ["Parenting", ["parenting", "keluarga", "anak", "ibu", "ayah", "abiku", "mendidik"]],
+  [
+    "Pengembangan Diri",
+    ["pengembangan diri", "psikologi", "self", "diri", "kebiasaan diri", "burnout", "mental", "mindset", "stoik", "introvert", "memaafkan", "syukur", "sabar"],
+  ],
   ["Fiksi", ["fiksi", "novel", "cerita", "sastra"]],
   ["Komik", ["komik", "manga", "graphic novel"]],
   ["Biografi", ["biografi", "autobiografi", "biography", "memoar"]],
