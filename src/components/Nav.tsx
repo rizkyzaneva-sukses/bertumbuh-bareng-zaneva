@@ -9,7 +9,9 @@ export function Nav({ isAdmin, variant }: { isAdmin: boolean; variant: "top" | "
   const items: Item[] = [
     { href: "/", label: "Beranda", icon: "🏠" },
     { href: "/buku", label: "Buku", icon: "📚" },
+    { href: "/riwayat", label: "Riwayat", icon: "📖" },
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
+    { href: "/panduan", label: "Panduan", icon: "📘" },
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: "🛠️" }] : []),
     { href: "/profil", label: "Profil", icon: "👤" },
   ];

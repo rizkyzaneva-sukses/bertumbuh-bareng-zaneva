@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
-import { AppError } from "./loans";
+import { AppError } from "./errors";
 import { getCurrentUser, type CurrentUser } from "./auth";
 import { needsProfile } from "./profile";
 

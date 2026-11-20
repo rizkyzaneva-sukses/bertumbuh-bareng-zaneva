@@ -2,28 +2,13 @@ import { prisma } from "./db";
 import { computeDueDate, dateFromKey, jakartaKey, keyFromDbDate } from "./dates";
 import { makeReturnToken, newNonce } from "./tokens";
 import { stockLoss, type Condition } from "./conditions";
-import type { ReturnedVia, LoanStatus } from "../generated/prisma/client";
+import { queueAfterReturnPrompt } from "./wa-prompts";
+import { AppError } from "./errors";
+import { MAX_ACTIVE_LOANS, effectiveStatus } from "./loan-status";
+import type { ReturnedVia } from "../generated/prisma/client";
 
-export const MAX_ACTIVE_LOANS = 2;
-
-export class AppError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-    public status = 400,
-  ) {
-    super(message);
-  }
-}
-
-/** Status efektif: yang masih dipinjam dan lewat jatuh tempo dianggap terlambat. */
-export function effectiveStatus(
-  loan: { status: LoanStatus; dueDate: Date; returnedAt: Date | null },
-  now = new Date(),
-): LoanStatus {
-  if (loan.returnedAt || loan.status === "DIKEMBALIKAN") return "DIKEMBALIKAN";
-  return jakartaKey(now) > keyFromDbDate(loan.dueDate) ? "TERLAMBAT" : "DIPINJAM";
-}
+export { AppError } from "./errors";
+export { MAX_ACTIVE_LOANS, effectiveStatus } from "./loan-status";
 
 export async function borrowBook(userId: string, bookId: string, now = new Date()) {
   return prisma.$transaction(async (tx) => {
@@ -82,7 +67,16 @@ export async function returnLoan(
       });
     }
   }
-  return prisma.loan.findUniqueOrThrow({ where: { id: loanId }, include: { book: true, user: true } });
+  const done = await prisma.loan.findUniqueOrThrow({ where: { id: loanId }, include: { book: true, user: true } });
+
+  // Tanya "beres bacanya?" lewat WA. Diantre dulu (bukan dikirim langsung)
+  // supaya request balikin tidak menunggu WAHA — scheduler yang mengirim.
+  // Buku HILANG tetap ditanya: yang hilang eksemplarnya, bukan bacaan orangnya.
+  await queueAfterReturnPrompt(done.userId, done.bookId, done.id).catch((e) =>
+    console.error("[wa-prompt] gagal antre:", String((e as Error).message ?? e)),
+  );
+
+  return done;
 }
 
 /** Buat link pengembalian sekali pakai untuk sebuah peminjaman (nonce baru membatalkan link lama). */

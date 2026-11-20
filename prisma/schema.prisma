@@ -43,6 +43,45 @@ enum BookCondition {
   HILANG
 }
 
+/// Status bacaan. Ini BUKAN status pinjaman: buku bisa sudah dikembalikan
+/// tapi orangnya belum selesai baca (atau sebaliknya).
+enum ReadingStatus {
+  SEDANG_DIBACA
+  SELESAI
+}
+
+/// Pertanyaan yang dikirim ke WhatsApp dan menunggu balasan angka.
+enum PromptKind {
+  AFTER_RETURN
+}
+
+/// Pertanyaan WA yang menunggu jawaban anggota ("1" = beres, "2" = belum).
+///
+/// Dipakai untuk tahu **beres baca**, bukan cuma "buku sudah kembali".
+/// Jawaban dibaca lewat polling WAHA (bukan webhook) supaya tidak mengganggu
+/// webhook n8n yang sudah terpasang di sesi `tehayu`.
+model WaPrompt {
+  id         String      @id @default(cuid())
+  userId     String
+  bookId     String
+  loanId     String?
+  kind       PromptKind  @default(AFTER_RETURN)
+  createdAt  DateTime    @default(now())
+  /// Null = belum terkirim (job yang mengirim, biar request balikin tetap cepat).
+  sentAt     DateTime?
+  expiresAt  DateTime
+  answeredAt DateTime?
+  /// "1" atau "2"
+  answer     String?
+  /// Teks balasan yang tertangkap, untuk jejak audit.
+  replyText  String?
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book       Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId, answeredAt])
+  @@index([sentAt, answeredAt])
+}
+
 model User {
   id                 String   @id @default(cuid())
   name               String
@@ -56,6 +95,8 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   loans              Loan[]
+  progresses         ReadingProgress[]
+  waPrompts          WaPrompt[]
 }
 
 model Book {
@@ -70,8 +111,37 @@ model Book {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   loans     Loan[]
+  progresses ReadingProgress[]
+  waPrompts  WaPrompt[]
 
   @@index([title])
+}
+
+/// Progres baca per ORANG per BUKU, bukan per peminjaman.
+///
+/// Bos: "saya baca Buku A sampai 200, eh kepotong mau buku B 100 hal, eh
+/// keburu ke buku C — jadi nanti saya bisa lanjut lagi". Karena itu progres
+/// menempel ke (user, buku) dan selamat walau bukunya sudah dikembalikan atau
+/// dipinjam ulang nanti.
+model ReadingProgress {
+  id         String        @id @default(cuid())
+  userId     String
+  bookId     String
+  /// Halaman terakhir yang dibaca (0 = belum mulai).
+  lastPage   Int           @default(0)
+  /// Jumlah halaman buku saat progres dicatat (jaga-jaga kalau `pages` diedit admin).
+  totalPages Int?
+  status     ReadingStatus @default(SEDANG_DIBACA)
+  /// Kapan ditandai "beres baca". Null = belum beres.
+  finishedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book       Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId, status])
+  @@index([bookId])
 }
 
 model Loan {
@@ -90,6 +160,8 @@ model Loan {
   condition   BookCondition?
   /// Catatan bebas admin soal kondisi (mis. "halaman 12 sobek").
   conditionNote String?
+  /// Berapa kali pinjaman ini diperpanjang. Maksimum ditentukan RENEW_LIMIT.
+  renewCount  Int          @default(0)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   book        Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
   reminders   ReminderLog[]

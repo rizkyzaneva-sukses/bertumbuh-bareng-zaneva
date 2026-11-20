@@ -1,18 +1,34 @@
 import { prisma } from "./db";
-import { effectiveStatus } from "./loans";
+import { effectiveStatus } from "./loan-status";
 import { keyFromDbDate } from "./dates";
 import { displayPhone } from "./phone";
+import { toProgressView, type ProgressView } from "./reading";
 
 /** Nama tampilan: kalau orangnya belum mengisi nama, pakai nomor HP. */
 const label = (name: string, phone: string) => name.trim() || displayPhone(phone);
 
-export type Reader = { userId: string; name: string };
+export type Reader = { userId: string; name: string; finishedAt: Date | null };
 
+/**
+ * Angka dashboard.
+ *
+ * PENTING — "selesai dibaca" dihitung dari **penanda beres baca** (progres
+ * bacaan atau jawaban WA), BUKAN dari "buku sudah dikembalikan". Buku yang
+ * kembali ke rak belum tentu selesai dibaca: orang bisa mengembalikan karena
+ * kepepet jatuh tempo sambil menandai "belum selesai".
+ *
+ * Karena itu juga buku yang sedang dipinjam tetap bisa terhitung selesai kalau
+ * orangnya sudah menandai beres (dibaca di kantor, lalu dikembalikan belakangan).
+ */
 export async function getDashboard(now = new Date()) {
-  const [users, books, loans] = await Promise.all([
+  const [users, books, loans, progresses] = await Promise.all([
     prisma.user.findMany({ select: { id: true, name: true, phone: true }, orderBy: { name: "asc" } }),
     prisma.book.findMany({ orderBy: { title: "asc" } }),
     prisma.loan.findMany({ include: { book: { select: { id: true, title: true, author: true } } }, orderBy: { borrowedAt: "desc" } }),
+    prisma.readingProgress.findMany({
+      include: { book: { select: { id: true, title: true, author: true } } },
+      orderBy: [{ finishedAt: "desc" }],
+    }),
   ]);
 
   const userLabel = (id: string) => {
@@ -20,30 +36,55 @@ export async function getDashboard(now = new Date()) {
     return f ? label(f.name, f.phone) : "?";
   };
 
+  const progByUserBook = new Map<string, ProgressView>();
+  for (const p of progresses) progByUserBook.set(`${p.userId}:${p.bookId}`, toProgressView(p));
+
   const perUser = users.map((u) => {
     const mine = loans.filter((l) => l.userId === u.id);
-    const finishedLoans = mine.filter((l) => l.returnedAt);
-    const finishedBooks = new Map<string, { id: string; title: string; author: string; returnedAt: Date }>();
-    for (const l of finishedLoans) if (!finishedBooks.has(l.bookId)) finishedBooks.set(l.bookId, { ...l.book, returnedAt: l.returnedAt! });
+    const doneProgress = progresses.filter((p) => p.userId === u.id && p.status === "SELESAI");
+    const finishedBooks = doneProgress.map((p) => ({
+      id: p.book.id,
+      title: p.book.title,
+      author: p.book.author,
+      finishedAt: p.finishedAt,
+    }));
     const reading = mine
       .filter((l) => !l.returnedAt)
-      .map((l) => ({ loanId: l.id, ...l.book, dueKey: keyFromDbDate(l.dueDate), status: effectiveStatus(l, now) }));
+      .map((l) => ({
+        loanId: l.id,
+        ...l.book,
+        dueKey: keyFromDbDate(l.dueDate),
+        status: effectiveStatus(l, now),
+        renewCount: l.renewCount,
+        progress: progByUserBook.get(`${u.id}:${l.bookId}`) ?? null,
+      }));
+    // Buku yang sedang dipegang tapi progresnya masih berjalan — ditampilkan
+    // terpisah supaya jelas mana yang "lagi dibaca" vs "sedang dipinjam".
     return {
       userId: u.id,
       name: label(u.name, u.phone),
-      finished: [...finishedBooks.values()],
-      finishedCount: finishedBooks.size,
+      finished: finishedBooks,
+      finishedCount: finishedBooks.length,
       reading,
     };
   });
 
   const perBook = books.map((b) => {
     const forBook = loans.filter((l) => l.bookId === b.id);
-    const readers = new Map<string, Reader>();
-    for (const l of forBook.filter((x) => x.returnedAt)) readers.set(l.userId, { userId: l.userId, name: userLabel(l.userId) });
+    const readerMap = new Map<string, Reader>();
+    for (const p of progresses) {
+      if (p.bookId === b.id && p.status === "SELESAI")
+        readerMap.set(p.userId, { userId: p.userId, name: userLabel(p.userId), finishedAt: p.finishedAt });
+    }
     const readingNow = forBook
       .filter((l) => !l.returnedAt)
-      .map((l) => ({ userId: l.userId, name: userLabel(l.userId), dueKey: keyFromDbDate(l.dueDate), status: effectiveStatus(l, now) }));
+      .map((l) => ({
+        userId: l.userId,
+        name: userLabel(l.userId),
+        dueKey: keyFromDbDate(l.dueDate),
+        status: effectiveStatus(l, now),
+        progress: progByUserBook.get(`${l.userId}:${b.id}`) ?? null,
+      }));
     return {
       id: b.id,
       title: b.title,
@@ -51,7 +92,7 @@ export async function getDashboard(now = new Date()) {
       category: b.category,
       stock: b.stock,
       available: Math.max(0, b.stock - readingNow.length),
-      readers: [...readers.values()],
+      readers: [...readerMap.values()],
       readingNow,
     };
   });
@@ -71,6 +112,14 @@ export async function getDashboard(now = new Date()) {
   }
 
   const active = loans.filter((l) => !l.returnedAt);
+  const finishedTotal = progresses.filter((p) => p.status === "SELESAI").length;
+  const finishedPeople = new Set(progresses.filter((p) => p.status === "SELESAI").map((p) => p.userId)).size;
+  // Hitung per (orang, buku), BUKAN per transaksi: satu orang yang meminjam
+  // buku yang sama dua kali tetap satu bacaan yang belum tuntas.
+  const returnedPairs = new Set(loans.filter((l) => l.returnedAt).map((l) => `${l.userId}:${l.bookId}`));
+  const returnedUnfinished = [...returnedPairs].filter(
+    (key) => (progByUserBook.get(key)?.status ?? "SEDANG_DIBACA") !== "SELESAI",
+  ).length;
   return {
     totals: {
       books: books.length,
@@ -78,10 +127,31 @@ export async function getDashboard(now = new Date()) {
       members: users.length,
       reading: active.length,
       late: active.filter((l) => effectiveStatus(l, now) === "TERLAMBAT").length,
-      finished: loans.filter((l) => l.returnedAt).length,
+      /** berapa buku yang benar-benar sudah tuntas dibaca (semua orang) */
+      finished: finishedTotal,
+      /** berapa orang yang punya minimal satu buku tuntas */
+      finishedPeople,
+      /** progres yang masih berjalan, walau bukunya sudah kembali */
+      inProgress: progresses.filter((p) => p.status === "SEDANG_DIBACA").length,
+      /** pasangan orang×buku yang bukunya kembali ke rak tapi belum ditandai beres */
+      returnedUnfinished,
     },
     ranking,
     perUser,
     perBook,
   };
+}
+
+/**
+ * Progres bacaan yang masih berjalan untuk satu orang — dipakai halaman
+ * Riwayat supaya bisa langsung "lanjut dari halaman X" termasuk untuk buku
+ * yang sudah dikembalikan.
+ */
+export async function unfinishedFor(userId: string) {
+  const rows = await prisma.readingProgress.findMany({
+    where: { userId, status: "SEDANG_DIBACA" },
+    include: { book: { select: { id: true, title: true, author: true, pages: true } } },
+    orderBy: { updatedAt: "desc" },
+  });
+  return rows.map((r) => ({ ...toProgressView(r), book: r.book, updatedAt: r.updatedAt }));
 }

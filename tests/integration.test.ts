@@ -4,6 +4,8 @@ import { borrowBook, effectiveStatus, returnLoan, AppError } from "@/lib/loans";
 import { runReminderJob } from "@/lib/reminders";
 import { verifyReturnToken } from "@/lib/tokens";
 import { getDashboard } from "@/lib/stats";
+import { markFinished, renewLoan, saveProgress, RENEW_LIMIT } from "@/lib/reading";
+import { afterReturnText, parseAnswer, pollPromptReplies, deliverPendingPrompts } from "@/lib/wa-prompts";
 import { seedAdmins, seedBooks, seedBooksOnce } from "@/lib/seed";
 import { keyFromDbDate } from "@/lib/dates";
 import { startMockWaha, resetDb } from "./helpers";
@@ -232,27 +234,320 @@ describe("dashboard", () => {
   it("angka per orang, per buku, dan ranking", async () => {
     const mkU = (n: string, p: string) => prisma.user.create({ data: { name: n, phone: p, passwordHash: "x" } });
     const [a, b, c] = await Promise.all([mkU("Ana", "6281000000001"), mkU("Budi", "6281000000002"), mkU("Cici", "6281000000003")]);
-    const bk = await Promise.all(["B1", "B2", "B3"].map((t) => prisma.book.create({ data: { title: t, author: "X", stock: 2 } })));
+    const bk = await Promise.all([["B1", 300], ["B2", 200], ["B3", 100]].map(([t, pg]) => prisma.book.create({ data: { title: t as string, author: "X", stock: 2, pages: pg as number } })));
     const t0 = wib("2026-11-16", "09:00");
-    // Ana: selesai B1 & B2, sedang B3. Budi: selesai B1 (dua kali pinjam B1 = tetap 1 judul). Cici: sedang B3.
-    for (const book of [bk[0], bk[1]]) await returnLoan((await borrowBook(a.id, book.id, t0)).id, "USER", t0);
+
+    // Ana: selesai B1 & B2 (ditandai beres), sedang B3.
+    // Budi: selesai B1 (dua kali pinjam B1 = tetap 1 judul), TAPI tidak ditandai beres.
+    // Cici: sedang B3.
+    for (const book of [bk[0], bk[1]]) {
+      await returnLoan((await borrowBook(a.id, book.id, t0)).id, "USER", t0);
+      await markFinished(a.id, book.id, true, t0);
+    }
     await returnLoan((await borrowBook(b.id, bk[0].id, t0)).id, "USER", t0);
     await returnLoan((await borrowBook(b.id, bk[0].id, t0)).id, "ADMIN", t0);
     await borrowBook(a.id, bk[2].id, t0);
     await borrowBook(c.id, bk[2].id, t0);
 
     const d = await getDashboard(wib("2026-11-25", "09:00"));
-    expect(d.totals).toMatchObject({ books: 3, copies: 6, members: 3, reading: 2, late: 2, finished: 4 });
-    expect(d.ranking.map((r) => [r.name, r.finishedCount, r.rank])).toEqual([["Ana", 2, 1], ["Budi", 1, 2]]);
+    // "finished" = beres baca yang DITANDAI, bukan jumlah buku yang dikembalikan.
+    // Ada 4 pengembalian, tapi hanya 2 yang ditandai beres.
+    expect(d.totals).toMatchObject({ books: 3, copies: 6, members: 3, reading: 2, late: 2, finished: 2 });
+    expect(d.totals.returnedUnfinished).toBe(1); // Budi: kembali tapi tidak ditandai
+    expect(d.ranking.map((r) => [r.name, r.finishedCount, r.rank])).toEqual([["Ana", 2, 1]]);
     const ana = d.perUser.find((u) => u.name === "Ana")!;
     expect(ana.finished.map((x) => x.title).sort()).toEqual(["B1", "B2"]);
     expect(ana.reading.map((x) => x.title)).toEqual(["B3"]);
     expect(ana.reading[0].status).toBe("TERLAMBAT");
     const b1 = d.perBook.find((x) => x.title === "B1")!;
-    expect(b1.readers.map((r) => r.name).sort()).toEqual(["Ana", "Budi"]);
+    expect(b1.readers.map((r) => r.name)).toEqual(["Ana"]); // Budi tidak ditandai beres
     const b3 = d.perBook.find((x) => x.title === "B3")!;
     expect(b3.readingNow.map((r) => r.name).sort()).toEqual(["Ana", "Cici"]);
     expect(b3.available).toBe(0);
     expect(d.perUser.find((u) => u.name === "Cici")!.finishedCount).toBe(0);
+  });
+
+  it("buku belum selesai dibaca tetap terhitung meski sudah dikembalikan", async () => {
+    const u = await prisma.user.create({ data: { name: "Dewi", phone: "6281000000009", passwordHash: "x" } });
+    const b = await prisma.book.create({ data: { title: "Tebal", author: "Y", pages: 400, stock: 1 } });
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, b.id, t0);
+
+    // Baca sampai 200, lalu buku dikembalikan karena kepepet jatuh tempo.
+    await saveProgress(u.id, b.id, 200, t0);
+    await returnLoan(loan.id, "USER", t0);
+
+    // Sudah tidak dipegang, tapi progres TIDAK hilang dan BELUM dianggap selesai.
+    const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: b.id } } });
+    expect(p.lastPage).toBe(200);
+    expect(p.status).toBe("SEDANG_DIBACA");
+    expect(p.finishedAt).toBeNull();
+
+    const d = await getDashboard(wib("2026-11-20", "09:00"));
+    expect(d.totals.finished).toBe(0);
+    expect(d.totals.returnedUnfinished).toBe(1);
+
+    // Lanjut dari halaman 200 (bukan dari nol) lalu tuntaskan.
+    await saveProgress(u.id, b.id, 400, t0);
+    const done = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: b.id } } });
+    expect(done.status).toBe("SELESAI");
+    expect(done.finishedAt).not.toBeNull();
+
+    const d2 = await getDashboard(wib("2026-11-20", "09:00"));
+    expect(d2.totals.finished).toBe(1);
+    expect(d2.totals.returnedUnfinished).toBe(0);
+    expect(d2.ranking.map((r) => [r.name, r.finishedCount])).toEqual([["Dewi", 1]]);
+  });
+
+  it("halaman di-clamp ke jumlah halaman buku (angka salah ketik tidak merusak data)", async () => {
+    const u = await prisma.user.create({ data: { name: "Eka", phone: "6281000000010", passwordHash: "x" } });
+    const b = await prisma.book.create({ data: { title: "Tipis", author: "Z", pages: 100, stock: 1 } });
+    await saveProgress(u.id, b.id, 9999);
+    const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: b.id } } });
+    expect(p.lastPage).toBe(100);
+    expect(p.status).toBe("SELESAI");
+  });
+});
+
+describe("perpanjangan", () => {
+  it("tidak perlu mengembalikan buku dulu — jatuh tempo digeser", async () => {
+    const { u, b } = await mk();
+    await prisma.book.update({ where: { id: b.id }, data: { stock: 1 } });
+    // Kamis 19 Nov 2026 -> jatuh tempo Senin 23 Nov (Ahad dilewati)
+    const loan = await borrowBook(u.id, b.id, wib("2026-11-19", "09:00"));
+    expect(keyFromDbDate(loan.dueDate)).toBe("2026-11-23");
+
+    const r = await renewLoan(loan.id, u.id, wib("2026-11-19", "10:00"));
+    // Digeser dari jatuh tempo LAMA (23 Nov) + 3 hari kerja = Kamis 26 Nov
+    expect(r.newDue).toBe("2026-11-26");
+    expect(r.remaining).toBe(RENEW_LIMIT - 1);
+
+    const after = await prisma.loan.findUniqueOrThrow({ where: { id: loan.id } });
+    expect(after.returnedAt).toBeNull(); // buku TIDAK dikembalikan
+    expect(after.renewCount).toBe(1);
+    expect(after.status).toBe("DIPINJAM");
+  });
+
+  it("perpanjangan dari hari ini kalau sudah lewat jatuh tempo (tidak hanguskan sisa)", async () => {
+    const { u, b } = await mk();
+    const loan = await borrowBook(u.id, b.id, wib("2026-11-16", "09:00")); // tempo 19 Nov
+    // Diperpanjang saat sudah telat 4 hari (23 Nov) -> hitung dari HARI INI
+    const r = await renewLoan(loan.id, u.id, wib("2026-11-23", "10:00"));
+    expect(r.newDue).toBe("2026-11-26");
+  });
+
+  it("batas perpanjangan dihabisi lalu ditolak", async () => {
+    const { u, b } = await mk();
+    const loan = await borrowBook(u.id, b.id, wib("2026-11-16", "09:00"));
+    await renewLoan(loan.id, u.id, wib("2026-11-16", "10:00"));
+    await renewLoan(loan.id, u.id, wib("2026-11-16", "11:00"));
+    await expect(renewLoan(loan.id, u.id, wib("2026-11-16", "12:00"))).rejects.toThrow(/diperpanjang/i);
+    const after = await prisma.loan.findUniqueOrThrow({ where: { id: loan.id } });
+    expect(after.renewCount).toBe(RENEW_LIMIT);
+  });
+
+  it("ditolak kalau buku sedang diantre orang lain", async () => {
+    const a = await prisma.user.create({ data: { name: "A", phone: "6281200000001", passwordHash: "x" } });
+    const b2 = await prisma.user.create({ data: { name: "B", phone: "6281200000002", passwordHash: "x" } });
+    const book = await prisma.book.create({ data: { title: "Satu Eksemplar", author: "X", stock: 1 } });
+    const loanA = await borrowBook(a.id, book.id, wib("2026-11-16", "09:00"));
+
+    // B tidak bisa meminjam (stok habis) — inilah bentuk antreannya.
+    await expect(borrowBook(b2.id, book.id, wib("2026-11-16", "10:00"))).rejects.toThrow(/eksemplar/i);
+
+    // Tanpa antrean nyata, A boleh perpanjang.
+    const ok = await renewLoan(loanA.id, a.id, wib("2026-11-16", "11:00"));
+    expect(ok.loan.renewCount).toBe(1);
+  });
+
+  it("orang lain tidak bisa memperpanjang pinjaman kita", async () => {
+    const { u, b } = await mk();
+    const lain = await prisma.user.create({ data: { name: "Lain", phone: "6281200000003", passwordHash: "x" } });
+    const loan = await borrowBook(u.id, b.id, wib("2026-11-16", "09:00"));
+    await expect(renewLoan(loan.id, lain.id, wib("2026-11-16", "10:00"))).rejects.toThrow(/bukan pinjamanmu/i);
+  });
+
+  it("buku yang sudah dikembalikan tidak bisa diperpanjang", async () => {
+    const { u, b } = await mk();
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, b.id, t0);
+    await returnLoan(loan.id, "USER", t0);
+    await expect(renewLoan(loan.id, u.id, t0)).rejects.toThrow(/sudah dikembalikan/i);
+  });
+});
+
+describe("pertanyaan beres-baca via WA", () => {
+  it("teks pertanyaannya sesuai permintaan Bos (ketik 1 / ketik 2 + halaman)", () => {
+    const t = afterReturnText("Tia", "Atomic Habits", 320);
+    expect(t).toContain("Beres bacanya?");
+    expect(t).toContain("Ketik 1 kalau sudah beres");
+    expect(t).toContain("Ketik 2 dan tuliskan halamannya");
+    expect(t).toContain("2 (50)"); // contoh formatnya
+    expect(t).toContain("320 halaman");
+    expect(t).toContain("Atomic Habits");
+  });
+
+  it("membaca 1, 2, dan 2 (50) — tapi menolak obrolan biasa", () => {
+    expect(parseAnswer("1")).toEqual({ answer: "1" });
+    expect(parseAnswer("1.")).toEqual({ answer: "1" });
+    expect(parseAnswer(" 2 ")).toEqual({ answer: "2" });
+    expect(parseAnswer("2️⃣")).toEqual({ answer: "2" });
+
+    // Inti permintaan Bos: "2 (50)" = belum beres, baru sampai halaman 50
+    expect(parseAnswer("2 (50)")).toEqual({ answer: "2", page: 50 });
+    expect(parseAnswer("2(50)")).toEqual({ answer: "2", page: 50 });
+    expect(parseAnswer("2 50")).toEqual({ answer: "2", page: 50 });
+    expect(parseAnswer("2 hal 50")).toEqual({ answer: "2", page: 50 });
+    expect(parseAnswer("2 halaman 50")).toEqual({ answer: "2", page: 50 });
+
+    // Harus diabaikan supaya obrolan harian tidak menandai buku selesai
+    expect(parseAnswer("iya")).toBeNull();
+    expect(parseAnswer("12")).toBeNull();
+    expect(parseAnswer("saya baca 1 buku 2 kali")).toBeNull();
+    expect(parseAnswer("")).toBeNull();
+  });
+
+  it("mengembalikan buku mengantre pertanyaan, terkirim tanpa menunggu, tidak dobel", async () => {
+    const { u, b } = await mk();
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, b.id, t0);
+    waha.calls.length = 0;
+    await returnLoan(loan.id, "USER", t0);
+
+    const queued = await prisma.waPrompt.findMany({ where: { loanId: loan.id } });
+    expect(queued).toHaveLength(1);
+    expect(queued[0].sentAt).toBeNull(); // request balikin tidak menunggu WAHA
+    expect(waha.calls).toHaveLength(0);
+
+    const sent = await deliverPendingPrompts({ now: t0 });
+    expect(sent.sent).toBe(1);
+    expect(waha.calls[0].body.text).toContain("Beres bacanya?");
+    expect(waha.calls[0].body.chatId).toBe("6281111111111@c.us");
+
+    // Dijalankan lagi: tidak dobel
+    const again = await deliverPendingPrompts({ now: t0 });
+    expect(again.sent).toBe(0);
+    expect(waha.calls).toHaveLength(1);
+  });
+
+  it("balasan 1 = beres baca, dibalas konfirmasi; tidak diproses dua kali", async () => {
+    const { u, b } = await mk();
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, b.id, t0);
+    await returnLoan(loan.id, "USER", t0);
+    await deliverPendingPrompts({ now: t0 });
+    const prompt = await prisma.waPrompt.findFirstOrThrow({ where: { loanId: loan.id } });
+
+    waha.calls.length = 0;
+    const sentTs = Math.floor(prompt.sentAt!.getTime() / 1000);
+    const fakeFetch = async () => [
+      { id: "m1", timestamp: sentTs + 60, fromMe: false, body: "1", chatId: "6281111111111@c.us" },
+    ];
+
+    const r = await pollPromptReplies({ now: new Date((sentTs + 60) * 1000), fetchMessages: fakeFetch as never });
+    expect(r.answered).toBe(1);
+    expect(r.replied).toBe(1);
+    expect(waha.calls[0].body.text).toContain("SELESAI dibaca");
+
+    const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: b.id } } });
+    expect(p.status).toBe("SELESAI");
+    expect(p.finishedAt).not.toBeNull();
+
+    // Poll lagi dengan pesan lama yang sama: tidak diproses ulang
+    const r2 = await pollPromptReplies({ now: new Date((sentTs + 120) * 1000), fetchMessages: fakeFetch as never });
+    expect(r2.answered).toBe(0);
+  });
+
+  it("balasan 2 = belum selesai; progres tetap ada supaya bisa dilanjutkan", async () => {
+    const { u, b } = await mk();
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, b.id, t0);
+    await saveProgress(u.id, b.id, 42, t0);
+    await returnLoan(loan.id, "USER", t0);
+    await deliverPendingPrompts({ now: t0 });
+    const prompt = await prisma.waPrompt.findFirstOrThrow({ where: { loanId: loan.id } });
+
+    waha.calls.length = 0;
+    const sentTs = Math.floor(prompt.sentAt!.getTime() / 1000);
+    const fakeFetch = async () => [
+      { id: "m2", timestamp: sentTs + 60, fromMe: false, body: "2", chatId: "6281111111111@c.us" },
+    ];
+    const r = await pollPromptReplies({ now: new Date((sentTs + 60) * 1000), fetchMessages: fakeFetch as never });
+    expect(r.answered).toBe(1);
+    expect(waha.calls[0].body.text).toContain("belum selesai");
+
+    const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: b.id } } });
+    expect(p.status).toBe("SEDANG_DIBACA");
+    expect(p.lastPage).toBe(42); // progres lama TIDAK dihapus/di-reset
+  });
+
+  it('balasan "2 (50)" = belum beres DAN simpan halaman 50 dalam satu pesan', async () => {
+    const u = await prisma.user.create({ data: { name: "Fajar", phone: "6281300000001", passwordHash: "x" } });
+    const book = await prisma.book.create({ data: { title: "Tebal 300", author: "W", pages: 300, stock: 1 } });
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, book.id, t0);
+    await returnLoan(loan.id, "USER", t0);
+    await deliverPendingPrompts({ now: t0 });
+    const prompt = await prisma.waPrompt.findFirstOrThrow({ where: { loanId: loan.id } });
+    const sentTs = Math.floor(prompt.sentAt!.getTime() / 1000);
+
+    waha.calls.length = 0;
+    const fakeFetch = async () => [
+      { id: "m9", timestamp: sentTs + 60, fromMe: false, body: "2 (50)", chatId: "6281300000001@c.us" },
+    ];
+    const r = await pollPromptReplies({ now: new Date((sentTs + 60) * 1000), fetchMessages: fakeFetch as never });
+    expect(r.answered).toBe(1);
+
+    // Halaman tersimpan, TAPI tidak dihitung selesai → tidak masuk dashboard
+    const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: book.id } } });
+    expect(p.lastPage).toBe(50);
+    expect(p.totalPages).toBe(300);
+    expect(p.status).toBe("SEDANG_DIBACA");
+    expect(p.finishedAt).toBeNull();
+
+    const d = await getDashboard(wib("2026-11-20", "09:00"));
+    expect(d.totals.finished).toBe(0);
+    expect(d.ranking).toHaveLength(0);
+
+    // Balasannya menyebut halaman yang dilaporkan
+    expect(waha.calls[0].body.text).toContain("halaman 50");
+    expect(waha.calls[0].body.text).toContain("300");
+  });
+
+  it('balasan "2 (9999)" di-clamp ke jumlah halaman buku, tetap belum beres', async () => {
+    const u = await prisma.user.create({ data: { name: "Gita", phone: "6281300000002", passwordHash: "x" } });
+    const book = await prisma.book.create({ data: { title: "Tipis 80", author: "V", pages: 80, stock: 1 } });
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, book.id, t0);
+    await returnLoan(loan.id, "USER", t0);
+    await deliverPendingPrompts({ now: t0 });
+    const prompt = await prisma.waPrompt.findFirstOrThrow({ where: { loanId: loan.id } });
+    const sentTs = Math.floor(prompt.sentAt!.getTime() / 1000);
+    const fakeFetch = async () => [
+      { id: "m10", timestamp: sentTs + 60, fromMe: false, body: "2 (9999)", chatId: "6281300000002@c.us" },
+    ];
+    await pollPromptReplies({ now: new Date((sentTs + 60) * 1000), fetchMessages: fakeFetch as never });
+    const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: book.id } } });
+    // 9999 > 80 → di-clamp ke 80, dan karena mentok halaman terakhir dianggap SELESAI
+    expect(p.lastPage).toBe(80);
+    expect(p.status).toBe("SELESAI");
+  });
+
+  it("pesan yang bukan 1/2 diabaikan (tidak menandai apa pun)", async () => {
+    const { u, b } = await mk();
+    const t0 = wib("2026-11-16", "09:00");
+    const loan = await borrowBook(u.id, b.id, t0);
+    await returnLoan(loan.id, "USER", t0);
+    await deliverPendingPrompts({ now: t0 });
+    const prompt = await prisma.waPrompt.findFirstOrThrow({ where: { loanId: loan.id } });
+    const sentTs = Math.floor(prompt.sentAt!.getTime() / 1000);
+    const fakeFetch = async () => [
+      { id: "m3", timestamp: sentTs + 60, fromMe: false, body: "assalamualaikum", chatId: "x" },
+      { id: "m4", timestamp: sentTs + 61, fromMe: true, body: "1", chatId: "x" }, // pesan KITA, bukan jawaban
+    ];
+    const r = await pollPromptReplies({ now: new Date((sentTs + 60) * 1000), fetchMessages: fakeFetch as never });
+    expect(r.answered).toBe(0);
+    const p = await prisma.readingProgress.findFirst({ where: { userId: u.id, bookId: b.id } });
+    expect(p).toBeNull();
   });
 });

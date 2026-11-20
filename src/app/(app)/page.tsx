@@ -1,21 +1,25 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { effectiveStatus, MAX_ACTIVE_LOANS } from "@/lib/loans";
+import { MAX_ACTIVE_LOANS, effectiveStatus } from "@/lib/loan-status";
 import { keyFromDbDate } from "@/lib/dates";
-import { getDashboard } from "@/lib/stats";
+import { getDashboard, unfinishedFor } from "@/lib/stats";
+import { progressMap } from "@/lib/reading";
 import { DueText, StatusChip } from "@/components/ui";
 import { ReturnLoanButton } from "@/components/LoanActions";
+import { ReadingControls, RenewButton, ProgressBar } from "@/components/ReadingControls";
 
 export default async function Beranda() {
   const user = await requireUser();
-  const [loans, dash] = await Promise.all([
+  const [loans, dash, prog, lanjut] = await Promise.all([
     prisma.loan.findMany({ where: { userId: user.id }, include: { book: true }, orderBy: { borrowedAt: "desc" } }),
     getDashboard(),
+    progressMap(user.id),
+    unfinishedFor(user.id),
   ]);
   const active = loans.filter((l) => !l.returnedAt);
   const done = loans.filter((l) => l.returnedAt);
-  const finishedBooks = new Set(done.map((l) => l.bookId)).size;
+  const finishedBooks = dash.perUser.find((u) => u.userId === user.id)?.finishedCount ?? 0;
   const me = dash.ranking.find((r) => r.userId === user.id);
   return (
     <>
@@ -27,6 +31,23 @@ export default async function Beranda() {
         <div className="stat"><b data-testid="my-finished">{finishedBooks}</b><span>Buku selesai kamu baca{me ? ` · peringkat #${me.rank}` : ""}</span></div>
       </div>
 
+      {lanjut.length > 0 && (
+        <div className="card" style={{ borderLeft: "3px solid var(--accent)" }} data-testid="continue-banner">
+          <div className="row between">
+            <div>
+              <b>Lanjutkan bacaanmu 📖</b>
+              <div className="small muted">
+                {lanjut[0].book.title} — halaman {lanjut[0].lastPage}
+                {lanjut[0].totalPages ? `/${lanjut[0].totalPages}` : ""} ({lanjut[0].percent}%)
+                {lanjut.length > 1 ? ` · +${lanjut.length - 1} lainnya` : ""}
+              </div>
+            </div>
+            <Link className="btn sm soft" href="/riwayat">Lanjut</Link>
+          </div>
+          <ProgressBar percent={lanjut[0].percent} />
+        </div>
+      )}
+
       <h2>Pinjaman saya</h2>
       {active.length === 0 ? (
         <div className="card">
@@ -35,6 +56,7 @@ export default async function Beranda() {
       ) : (
         active.map((l) => {
           const st = effectiveStatus(l);
+          const p = prog.get(l.bookId) ?? null;
           return (
             <div className="card" key={l.id} data-testid="my-loan">
               <div className="row between">
@@ -45,7 +67,28 @@ export default async function Beranda() {
                 </div>
                 <StatusChip status={st} />
               </div>
-              <div style={{ marginTop: 10 }}><ReturnLoanButton loanId={l.id} title={l.book.title} /></div>
+
+              {p ? (
+                <>
+                  <div className="small" style={{ marginTop: 8 }}>
+                    Halaman <b>{p.lastPage}</b>{l.book.pages ? <> dari {l.book.pages}</> : null} · {p.percent}%
+                  </div>
+                  <ProgressBar percent={p.percent} />
+                </>
+              ) : null}
+
+              <ReadingControls
+                bookId={l.bookId}
+                title={l.book.title}
+                totalPages={l.book.pages}
+                lastPage={p?.lastPage ?? 0}
+                finished={p?.status === "SELESAI"}
+              />
+
+              <div className="row" style={{ marginTop: 10, gap: 8 }}>
+                <RenewButton loanId={l.id} dueLabel={keyFromDbDate(l.dueDate)} renewLeft={Math.max(0, 2 - l.renewCount)} />
+                <ReturnLoanButton loanId={l.id} title={l.book.title} />
+              </div>
             </div>
           );
         })
@@ -73,12 +116,25 @@ export default async function Beranda() {
 
       {done.length > 0 && (
         <>
-          <h2 style={{ marginTop: 18 }}>Riwayat bacaku</h2>
+          <div className="row between" style={{ marginTop: 18 }}>
+            <h2 style={{ margin: 0 }}>Riwayat bacaku</h2>
+            <Link href="/riwayat" className="small">Semua</Link>
+          </div>
           <div className="card">
             <ul className="list">
-              {done.slice(0, 10).map((l) => (
-                <li key={l.id}><b>{l.book.title}</b> <span className="small muted">· {l.book.author}</span></li>
-              ))}
+              {done.slice(0, 10).map((l) => {
+                const p = prog.get(l.bookId);
+                return (
+                  <li key={l.id}>
+                    <b>{l.book.title}</b> <span className="small muted">· {l.book.author}</span>
+                    {p?.status === "SELESAI" ? (
+                      <> <span className="chip green">✓ Selesai</span></>
+                    ) : (
+                      <span className="small muted"> · belum ditandai beres</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </>

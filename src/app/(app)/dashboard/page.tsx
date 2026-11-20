@@ -22,10 +22,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <h1>Dashboard 📊</h1>
       <div className="grid cols2 cols4" style={{ marginBottom: 14 }}>
         <Stat n={d.totals.books} label="Judul buku" />
-        <Stat n={d.totals.reading} label="Sedang dibaca" />
-        <Stat n={d.totals.finished} label="Selesai dibaca" />
+        <Stat n={d.totals.reading} label="Sedang dipinjam" />
+        <Stat n={d.totals.finished} label="Beres dibaca" />
         <Stat n={d.totals.late} label="Terlambat" />
       </div>
+      <p className="muted small" style={{ marginTop: -6 }}>
+        <b>Beres dibaca</b> dihitung dari penanda selesai (klik di app atau balas <code>1</code> di WA) —
+        bukan dari buku yang sudah dikembalikan. {d.totals.returnedUnfinished > 0
+          ? `${d.totals.returnedUnfinished} buku sudah kembali ke rak tapi belum ditandai beres.`
+          : "Semua buku yang kembali sudah ditandai."}
+      </p>
       <div className="tabs" role="tablist">
         {TABS.map((x) => (
           <Link key={x.key} href={`/dashboard?tab=${x.key}`} className={tab === x.key ? "on" : ""} role="tab" aria-selected={tab === x.key}>{x.label}</Link>
@@ -35,7 +41,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {tab === "ranking" && (
         <div className="card" data-testid="ranking">
           <h2>Pembaca teratas</h2>
-          <p className="muted small">Diurutkan dari jumlah buku berbeda yang sudah selesai dibaca (sudah dikembalikan).</p>
+          <p className="muted small">Diurutkan dari jumlah buku berbeda yang benar-benar <b>selesai dibaca</b> (ditandai beres, lewat app atau WA).</p>
           {d.ranking.length === 0 ? (
             <p className="muted">Belum ada yang selesai baca.</p>
           ) : (

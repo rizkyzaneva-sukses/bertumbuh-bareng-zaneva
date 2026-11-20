@@ -4,6 +4,7 @@ import { issueReturnToken } from "./loans";
 import { returnUrl } from "./tokens";
 import { wahaSendText, type SendText } from "./waha";
 import { displayPhone } from "./phone";
+import { deliverPendingPrompts, pollPromptReplies } from "./wa-prompts";
 import type { ReminderKind } from "../generated/prisma/client";
 
 /** Jam kirim pengingat (WIB). Job boleh jalan kapan saja; mengirim hanya di jendela ini. */
@@ -236,5 +237,29 @@ export function startReminderScheduler() {
       .catch((e) => console.error("[pengingat] gagal:", e));
   setTimeout(tick, 30_000);
   setInterval(tick, 5 * 60_000).unref?.();
-  console.log("[pengingat] scheduler aktif (cek tiap 5 menit, kirim 08.00-20.00 WIB)");
+
+  // Pertanyaan "beres bacanya?" + pembacaan jawaban 1/2.
+  // Dijalankan di tick yang sama tapi terpisah dari job pengingat, supaya
+  // kegagalan salah satunya tidak mematikan yang lain.
+  const tickPrompts = async () => {
+    try {
+      const sent = await deliverPendingPrompts({ limit: 10 });
+      if (sent.sent || sent.failed) console.log("[wa-prompt] terkirim:", JSON.stringify(sent));
+    } catch (e) {
+      console.error("[wa-prompt] gagal kirim:", e);
+    }
+    try {
+      const polled = await pollPromptReplies();
+      if (polled.answered || polled.replied) console.log("[wa-prompt] jawaban:", JSON.stringify(polled));
+    } catch (e) {
+      console.error("[wa-prompt] gagal poll:", e);
+    }
+  };
+  setTimeout(tickPrompts, 90_000);
+  setInterval(tickPrompts, 5 * 60_000).unref?.();
+
+  console.log(
+    "[pengingat] scheduler aktif (cek tiap 5 menit, kirim 08.00-20.00 WIB) · " +
+      "pertanyaan beres-baca + poll jawaban WA juga aktif",
+  );
 }
