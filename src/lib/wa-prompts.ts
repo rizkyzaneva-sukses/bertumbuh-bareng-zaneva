@@ -49,33 +49,25 @@ export function parseAnswer(raw: string): ParsedAnswer | null {
 
 const label = (name: string, phone: string) => name.trim() || (phone ? `kak ${displayPhone(phone)}` : "Sahabat");
 
-/** Teks pertanyaan setelah buku dikembalikan — persis gaya yang diminta Bos. */
+/** Teks pertanyaan setelah buku dikembalikan — sengaja SINGKAT (gaya chat, bukan surat). */
 export function afterReturnText(name: string, title: string, totalPages?: number | null) {
+  const panggilan = name.trim().split(" ")[0] || "Kak";
   return (
-    `Halo ${label(name, "")} 👋\n\n` +
-    `Buku "${title}" sudah tercatat kembali. Terima kasih!\n\n` +
+    `✔ "${title}" sudah kembali, ${panggilan}.\n` +
     `Beres bacanya?\n` +
-    `Ketik 1 kalau sudah beres\n` +
-    `Ketik 2 dan tuliskan halamannya kalau belum — contoh: 2 (50)` +
-    (totalPages ? `\n(buku ini ${totalPages} halaman)` : "") +
-    `\n\nKalau belum, progres bacamu tersimpan — nanti tinggal lanjut dari halaman terakhir.`
+    `1 = beres\n` +
+    `2 (halaman) = belum, ex: 2 (50)` +
+    (totalPages ? `\n(${totalPages} hlm)` : "")
   );
 }
 
 export function ackFinishText(title: string) {
-  return `Alhamdulillah 🌱 "${title}" tercatat SELESAI dibaca. Mantap, lanjut buku berikutnya ya!`;
+  return `✅ "${title}" — beres dibaca. Mantap! Lanjut buku berikutnya 🌱`;
 }
 
 export function ackUnfinishedText(title: string, page?: number, totalPages?: number | null) {
-  const sampai =
-    page !== undefined
-      ? `sampai halaman ${page}${totalPages ? ` dari ${totalPages}` : ""}`
-      : "belum selesai";
-  return (
-    `Oke, "${title}" dicatat ${sampai}.\n\n` +
-    `Progresmu aman tersimpan dan tidak dihitung selesai di dashboard. ` +
-    `Buka app → Riwayat → lanjut dari halaman terakhir kapan pun kamu siap.`
-  );
+  const sampai = page !== undefined ? `sampai hlm ${page}${totalPages ? `/${totalPages}` : ""}` : "belum selesai";
+  return `👍 "${title}" ${sampai}. Lanjut kapan pun di menu Riwayat.`;
 }
 
 /**
@@ -160,7 +152,9 @@ export const ORPHAN_WINDOW_MS = 3 * 86400000;
 
 /** Ambil judul buku dari teks pertanyaan yang kita kirim (untuk mencocokkan tanpa DB). */
 export function bookTitleFromPrompt(text: string): string | null {
-  const m = String(text ?? "").match(/Buku\s+"([^"]+)"/);
+  // Format now: `✔ "Judul Buku" sudah kembali`. Ambil tanda kutip pertama —
+  // teks konfirmasi tidak memuat kutipan judul, jadi tidak akan salah ambil.
+  const m = String(text ?? "").match(/"([^"]{2,200})"/);
   return m ? m[1].trim() : null;
 }
 

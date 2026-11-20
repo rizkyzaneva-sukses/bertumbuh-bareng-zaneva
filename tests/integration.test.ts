@@ -5,7 +5,7 @@ import { runReminderJob, followUpText } from "@/lib/reminders";
 import { verifyReturnToken } from "@/lib/tokens";
 import { getDashboard } from "@/lib/stats";
 import { markFinished, renewLoan, saveProgress, RENEW_LIMIT } from "@/lib/reading";
-import { afterReturnText, parseAnswer, pollPromptReplies, deliverPendingPrompts } from "@/lib/wa-prompts";
+import { afterReturnText, ackFinishText, ackUnfinishedText, parseAnswer, pollPromptReplies, deliverPendingPrompts } from "@/lib/wa-prompts";
 import { seedAdmins, seedBooks, seedBooksOnce } from "@/lib/seed";
 import { keyFromDbDate } from "@/lib/dates";
 import { startMockWaha, resetDb } from "./helpers";
@@ -388,11 +388,17 @@ describe("pertanyaan beres-baca via WA", () => {
   it("teks pertanyaannya sesuai permintaan Bos (ketik 1 / ketik 2 + halaman)", () => {
     const t = afterReturnText("Tia", "Atomic Habits", 320);
     expect(t).toContain("Beres bacanya?");
-    expect(t).toContain("Ketik 1 kalau sudah beres");
-    expect(t).toContain("Ketik 2 dan tuliskan halamannya");
+    expect(t).toContain("1 = beres");
+    expect(t).toContain("2 (halaman) = belum");
     expect(t).toContain("2 (50)"); // contoh formatnya
-    expect(t).toContain("320 halaman");
+    expect(t).toContain("320 hlm");
     expect(t).toContain("Atomic Habits");
+    // Bos: "panjang gitu wkwk, kurang cocok buat respon" -> wajib pendek.
+    expect(t.length).toBeLessThan(150);
+    expect(t.split("\n").length).toBeLessThanOrEqual(5);
+    // Konfirmasi juga harus pendek
+    expect(ackFinishText("Atomic Habits").length).toBeLessThan(80);
+    expect(ackUnfinishedText("Atomic Habits", 50, 320).length).toBeLessThan(80);
   });
 
   it("membaca 1, 2, dan 2 (50) — tapi menolak obrolan biasa", () => {
@@ -455,7 +461,7 @@ describe("pertanyaan beres-baca via WA", () => {
     const r = await pollPromptReplies({ now: new Date((sentTs + 60) * 1000), fetchMessages: fakeFetch as never });
     expect(r.answered).toBe(1);
     expect(r.replied).toBe(1);
-    expect(waha.calls[0].body.text).toContain("SELESAI dibaca");
+    expect(waha.calls[0].body.text).toContain("beres dibaca");
 
     const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: b.id } } });
     expect(p.status).toBe("SELESAI");
@@ -518,7 +524,7 @@ describe("pertanyaan beres-baca via WA", () => {
     expect(d.ranking).toHaveLength(0);
 
     // Balasannya menyebut halaman yang dilaporkan
-    expect(waha.calls[0].body.text).toContain("halaman 50");
+    expect(waha.calls[0].body.text).toContain("hlm 50");
     expect(waha.calls[0].body.text).toContain("300");
   });
 
@@ -597,7 +603,7 @@ describe("pertanyaan beres-baca via WA", () => {
     const p = await prisma.readingProgress.findUniqueOrThrow({ where: { userId_bookId: { userId: u.id, bookId: book.id } } });
     expect(p.lastPage).toBe(100);
     expect(p.status).toBe("SEDANG_DIBACA");
-    expect(waha.calls[0].body.text).toContain("halaman 100");
+    expect(waha.calls[0].body.text).toContain("hlm 100");
   });
 
   it("pesan yang bukan 1/2 diabaikan (tidak menandai apa pun)", async () => {
