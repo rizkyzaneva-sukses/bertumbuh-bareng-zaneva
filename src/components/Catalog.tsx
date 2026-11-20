@@ -49,7 +49,7 @@ export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; s
             </div>
             {b.holders.length > 0 && (
               <div className="small muted" data-testid="holders">
-                {b.mine && b.holders.length === 1 ? "Dipegang kamu" : `Dipegang: ${b.holders.join(", ")}`}
+                {b.mine && b.holders.length === 1 ? "Dipinjam kamu" : `Dipinjam: ${b.holders.join(", ")}`}
               </div>
             )}
             {b.synopsis && <p className="syn" style={{ margin: 0 }}>{b.synopsis}</p>}

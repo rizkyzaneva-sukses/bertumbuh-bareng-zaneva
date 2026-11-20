@@ -114,15 +114,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <summary>
               <span>{b.title}</span>
               {b.readingNow.length > 0 && (
-                <span className="chip amber" data-testid="now-reading-count">{b.readingNow.length} dipegang</span>
+                <span className="chip amber" data-testid="now-reading-count">{b.readingNow.length} dipinjam</span>
               )}
               <span className="chip green">{b.readers.length} selesai</span>
             </summary>
             <div className="inner">
               <div className="small muted">{b.author} · tersedia {b.available}/{b.stock}</div>
               {/* Jawaban langsung untuk "buku A lagi dipinjam siapa?" */}
-              <h3 style={{ marginTop: 8 }}>Sedang dipegang</h3>
-              {b.readingNow.length === 0 ? <p className="muted small">Tersedia di rak — belum dipegang siapa pun.</p> : (
+              <h3 style={{ marginTop: 8 }}>Sedang dipinjam</h3>
+              {b.readingNow.length === 0 ? <p className="muted small">Tersedia di rak — belum dipinjam siapa pun.</p> : (
                 <ul className="list">
                   {b.readingNow.map((r) => (
                     <li key={r.userId}>
