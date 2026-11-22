@@ -21,7 +21,7 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} method="post">
       <div className="field">
         <label htmlFor="phone">Nomor HP</label>
         <input id="phone" name="phone" inputMode="tel" autoComplete="username" placeholder="08xxxxxxxxxx" value={phone} onChange={(e) => setPhone(e.target.value)} />
