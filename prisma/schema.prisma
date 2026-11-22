@@ -108,13 +108,30 @@ model Book {
   synopsis  String   @default("")
   /// Jumlah eksemplar
   stock     Int      @default(1)
+  /// URL/path gambar sampul (2:3). Kosong = rak memakai sampul generatif
+  /// (tipografi bergaya toko buku, bukan cuma judul teks polos).
+  coverUrl  String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   loans     Loan[]
   progresses ReadingProgress[]
   waPrompts  WaPrompt[]
+  cover     BookCover?
 
   @@index([title])
+}
+
+/// Gambar sampul hasil unggahan admin, disimpan di DB (bukan di disk) supaya
+/// tidak butuh volume permanen dan tidak hilang saat container di-deploy ulang.
+/// Satu buku satu sampul; `Book.coverUrl` menunjuk ke `/api/books/<id>/cover`.
+model BookCover {
+  bookId    String   @id
+  mime      String
+  bytes     Bytes
+  width     Int?
+  height    Int?
+  updatedAt DateTime @updatedAt
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
 }
 
 /// Progres baca per ORANG per BUKU, bukan per peminjaman.

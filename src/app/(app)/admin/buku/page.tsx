@@ -35,6 +35,7 @@ export default async function AdminBuku() {
         category: b.category,
         synopsis: b.synopsis,
         stock: b.stock,
+        coverUrl: b.coverUrl,
         active: a.get(b.id) ?? 0,
         issues: issues.get(b.id) ?? { ringan: 0, berat: 0, hilang: 0 },
       }))}

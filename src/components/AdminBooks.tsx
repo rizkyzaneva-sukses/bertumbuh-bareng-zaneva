@@ -1,20 +1,120 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "./api";
+import { BookCover } from "./BookCover";
 
 export type BookIssues = { ringan: number; berat: number; hilang: number };
-export type AdminBook = { id: string; title: string; author: string; pages: number | null; category: string; synopsis: string; stock: number; active: number; issues?: BookIssues };
+export type AdminBook = {
+  id: string;
+  title: string;
+  author: string;
+  pages: number | null;
+  category: string;
+  synopsis: string;
+  stock: number;
+  active: number;
+  coverUrl: string;
+  issues?: BookIssues;
+};
 
 /** Kategori baku — sengaja daftar tetap supaya rak tidak pecah jadi puluhan label. */
 import { CATEGORIES } from "@/lib/categories";
 export { CATEGORIES };
+
+const MAX_COVER_MB = 2;
+
+/**
+ * Unggah sampul. Dipisah dari POST/PATCH buku supaya:
+ *  - buku baru: simpan dulu (dapat id), baru unggah;
+ *  - buku lama: unggah langsung, tidak perlu "Simpan perubahan".
+ */
+function CoverPicker({ bookId, title, author, category, coverUrl, onChanged }: {
+  bookId?: string;
+  title: string;
+  author: string;
+  category: string;
+  coverUrl: string;
+  onChanged: (url: string) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function upload(file: File) {
+    if (!bookId) return;
+    setErr("");
+    if (file.size > MAX_COVER_MB * 1024 * 1024) return setErr(`Ukuran maksimal ${MAX_COVER_MB} MB`);
+    setBusy(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/books/${bookId}/cover`, { method: "POST", body: fd });
+    const body = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) return setErr(body.error ?? "Gagal mengunggah sampul");
+    onChanged(body.coverUrl ?? "");
+  }
+
+  async function remove() {
+    if (!bookId) return;
+    if (!confirm("Hapus sampul? Buku kembali memakai sampul otomatis.")) return;
+    setBusy(true);
+    const res = await fetch(`/api/books/${bookId}/cover`, { method: "DELETE" });
+    setBusy(false);
+    if (!res.ok) return setErr("Gagal menghapus sampul");
+    onChanged("");
+  }
+
+  return (
+    <div className="field">
+      <label>Sampul buku</label>
+      <div className="row" style={{ alignItems: "flex-start", gap: 12 }}>
+        <div style={{ width: 76, flex: "none" }}>
+          <BookCover book={{ id: bookId ?? "baru", title: title || "Judul buku", author: author || "Penulis", category, coverUrl }} size="sm" />
+        </div>
+        <div style={{ flex: 1, minWidth: 160 }}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Kosongkan untuk sampul otomatis (warna kategori). Unggah foto sampul asli supaya rak makin mirip toko buku.
+          </p>
+          {bookId ? (
+            <div className="row">
+              <button type="button" className="btn sm ghost" disabled={busy} onClick={() => fileRef.current?.click()}>
+                {busy ? "Mengunggah…" : coverUrl ? "Ganti gambar" : "Unggah gambar"}
+              </button>
+              {coverUrl && (
+                <button type="button" className="btn sm ghost" disabled={busy} onClick={remove} data-testid="cover-remove">
+                  Hapus
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="small muted" style={{ margin: 0 }}>Simpan buku dulu, lalu unggah sampulnya di daftar.</p>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            data-testid="cover-file"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) upload(f);
+              e.target.value = "";
+            }}
+          />
+          {err && <div className="err" role="alert">{err}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function BookForm({ initial, onDone, onCancel }: { initial?: AdminBook; onDone: () => void; onCancel?: () => void }) {
   const [f, setF] = useState({
     title: initial?.title ?? "", author: initial?.author ?? "", pages: initial?.pages?.toString() ?? "",
     category: initial?.category ?? "", synopsis: initial?.synopsis ?? "", stock: String(initial?.stock ?? 1),
   });
+  const [coverUrl, setCoverUrl] = useState(initial?.coverUrl ?? "");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
@@ -22,7 +122,7 @@ function BookForm({ initial, onDone, onCancel }: { initial?: AdminBook; onDone: 
     e.preventDefault();
     setErr("");
     setBusy(true);
-    const body = { title: f.title, author: f.author, pages: f.pages.trim() ? Number(f.pages) : null, category: f.category, synopsis: f.synopsis, stock: Number(f.stock || 1) };
+    const body = { title: f.title, author: f.author, pages: f.pages.trim() ? Number(f.pages) : null, category: f.category, synopsis: f.synopsis, stock: Number(f.stock || 1), coverUrl };
     const r = initial ? await api(`/api/books/${initial.id}`, "PATCH", body) : await api("/api/books", "POST", body);
     setBusy(false);
     if (!r.ok) return setErr(r.error ?? "Gagal menyimpan");
@@ -45,6 +145,18 @@ function BookForm({ initial, onDone, onCancel }: { initial?: AdminBook; onDone: 
         </select>
       </div>
       <div className="field"><label>Sinopsis / bahasan buku</label><textarea value={f.synopsis} onChange={set("synopsis")} name="synopsis" /></div>
+      <CoverPicker
+        bookId={initial?.id}
+        title={f.title}
+        author={f.author}
+        category={f.category}
+        coverUrl={coverUrl}
+        onChanged={setCoverUrl}
+      />
+      <div className="field">
+        <label>Atau tempel URL gambar sampul</label>
+        <input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://… (kosongkan untuk sampul otomatis)" name="coverUrl" />
+      </div>
       {err && <div className="err" role="alert">{err}</div>}
       <div className="row">
         <button className="btn" disabled={busy} type="submit">{busy ? "Menyimpan…" : initial ? "Simpan perubahan" : "Tambah buku"}</button>
@@ -62,6 +174,7 @@ export function AdminBooks({ books, totalIssues = 0 }: { books: AdminBook[]; tot
   const [err, setErr] = useState("");
   const shown = books.filter((b) => `${b.title} ${b.author}`.toLowerCase().includes(q.toLowerCase()));
   const bermasalah = books.filter((b) => b.issues && (b.issues.ringan + b.issues.berat + b.issues.hilang) > 0);
+  const tanpaSampul = books.filter((b) => !b.coverUrl).length;
 
   async function del(b: AdminBook) {
     if (!confirm(`Hapus "${b.title}"? Riwayat baca buku ini juga ikut terhapus dan tidak bisa dibatalkan.`)) return;
@@ -97,15 +210,20 @@ export function AdminBooks({ books, totalIssues = 0 }: { books: AdminBook[]; tot
           </ul>
         </div>
       )}
-      <p className="muted small">{shown.length} dari {books.length} judul</p>
+      <p className="muted small">
+        {shown.length} dari {books.length} judul · {tanpaSampul > 0 ? `${tanpaSampul} masih pakai sampul otomatis` : "semua judul sudah punya gambar sampul"}
+      </p>
       {shown.map((b) => (
         <div className="card" key={b.id} data-testid="admin-book">
           {editing === b.id ? (
             <BookForm initial={b} onDone={() => { setEditing(null); router.refresh(); }} onCancel={() => setEditing(null)} />
           ) : (
             <>
-              <div className="row between">
-                <div style={{ minWidth: 0 }}>
+              <div className="row" style={{ alignItems: "flex-start", flexWrap: "nowrap", gap: 12 }}>
+                <div style={{ width: 56, flex: "none" }}>
+                  <BookCover book={b} size="xs" />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <h3 style={{ margin: 0 }}>{b.title}</h3>
                   <div className="small muted">
                     {b.author} · {b.pages ? `${b.pages} hlm` : "halaman belum diisi"} · stok {b.stock}{b.active ? ` (${b.active} dipinjam)` : ""}

@@ -135,6 +135,140 @@ input:focus, textarea:focus, select:focus, .btn:focus-visible, a:focus-visible, 
 .book h3 { margin: 0; }
 .book .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .syn { color: var(--muted); font-size: .92rem; }
+
+/* ---------- Sampul buku (etalase toko) ---------- */
+.cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  container-type: inline-size;
+  isolation: isolate;
+  background: #2b2118;
+  box-shadow: 0 1px 2px rgba(40, 25, 10, .18), 0 10px 22px -10px rgba(40, 25, 10, .55);
+  border: 1px solid color-mix(in srgb, #000 12%, transparent);
+}
+.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Kilau kertas + bayangan tulang buku supaya terlihat benda, bukan kotak warna. */
+.cover-sheen {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(97deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 14%),
+    linear-gradient(180deg, rgba(255,255,255,.10) 0%, rgba(0,0,0,.10) 100%);
+}
+.cover:not([data-cover="image"]) .cover-sheen { display: none; }
+.cover-spine {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 7%;
+  background: linear-gradient(90deg, rgba(0,0,0,.38) 0%, rgba(0,0,0,.10) 60%, rgba(255,255,255,.16) 100%);
+  pointer-events: none; z-index: 3;
+}
+.cover-art { position: absolute; inset: 0; overflow: hidden; opacity: .9; }
+.cover-art > span { position: absolute; display: block; }
+.cv-circle {
+  width: 78%; aspect-ratio: 1; border-radius: 50%;
+  right: -26%; top: -12%; opacity: .30;
+}
+.cv-bars {
+  left: 6%; bottom: 12%; width: 46%; height: 6%;
+  background: currentColor;
+  box-shadow: 0 14cqw 0 -2cqw currentColor; border-radius: 2px; opacity: .55;
+}
+.cv-rings { left: -14%; bottom: -8%; width: 68%; aspect-ratio: 1; border: 2cqw solid; border-radius: 50%; opacity: .35; }
+.cv-rings i { position: absolute; inset: 12%; border: 1.2cqw solid currentColor; border-radius: 50%; }
+.cv-rings i:nth-child(2) { inset: 28%; }
+.cv-rings i:nth-child(3) { inset: 44%; }
+.cv-stripes {
+  inset: 0; opacity: .16;
+  -webkit-mask-image: repeating-linear-gradient(128deg, #000 0 3%, transparent 3% 9%);
+  mask-image: repeating-linear-gradient(128deg, #000 0 3%, transparent 3% 9%);
+}
+.cv-block { right: -18%; top: 16%; width: 62%; height: 34%; opacity: .22; border-radius: 4px; transform: rotate(-8deg); }
+.cv-dot { right: 16%; top: 58%; width: 13%; aspect-ratio: 1; border-radius: 50%; opacity: .55; }
+.cv-arc {
+  inset: auto -30% -34% auto; width: 104%; aspect-ratio: 1;
+  border: 5cqw solid; border-radius: 50%; opacity: .28;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+.cover-body {
+  position: relative; z-index: 2;
+  height: 100%;
+  display: flex; flex-direction: column;
+  padding: 11cqw 9cqw 10cqw 13cqw;
+  gap: 2.5cqw;
+}
+.cover-cat {
+  font-size: 6.2cqw; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+  opacity: .95; line-height: 1.15;
+}
+.cover-title {
+  font-weight: 800; line-height: 1.06; letter-spacing: -.02em;
+  display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;
+  margin-top: auto; text-wrap: balance;
+  /* Judul satu kata panjang ("Indistractable") sempat terpotong di tepi kanan.
+     `overflow-wrap: break-word` mencoba mematahkan kata, tapi hasilnya jelek
+     ("Essentialis / m"). Aturan sekarang: kata hanya dipatahkan kalau BENAR
+     tidak muat sendiri (anywhere), dan ukuran huruf dikecilkan lebih dulu oleh
+     coverTitleSize() — jadi pematahan hampir tidak pernah terjadi. */
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+.cover-sub {
+  font-size: 5.4cqw; font-weight: 600; line-height: 1.22; opacity: .78;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+}
+.cover-author {
+  font-size: 6cqw; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  opacity: .88; margin-top: auto; padding-top: 3cqw;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cover-rule { height: 2.2cqw; width: 22%; border-radius: 2px; opacity: .9; }
+.cover-lg .cover-body { padding: 8cqw 7cqw 8cqw 11cqw; }
+
+/* ---------- Etalase (rak gaya toko buku) ---------- */
+.shelf { display: grid; gap: 18px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 560px) { .shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.tile { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tile-cover { position: relative; transition: transform .18s ease; }
+.tile:hover .tile-cover { transform: translateY(-3px); }
+.tile-title {
+  font-weight: 700; font-size: .92rem; line-height: 1.25; margin: 0;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.tile-author { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.tile-badges .chip { font-size: .68rem; padding: 1px 8px; }
+.tile .btn { min-height: 38px; font-size: .85rem; }
+.tile-mine {
+  position: absolute; top: 8px; right: 8px; z-index: 4;
+  background: var(--accent); color: var(--accent-ink);
+  font-size: .68rem; font-weight: 800; padding: 3px 8px; border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.tile-out {
+  position: absolute; inset: 0; z-index: 4; display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 10px; pointer-events: none;
+}
+.tile-out span { background: rgba(20,12,6,.78); color: #fff; font-size: .7rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.shelf-hint { font-size: .8rem; color: var(--muted); }
+/* Kategori seperti lorong toko: judul bagian + garis. */
+.shelf-section { margin: 4px 0 10px; display: flex; align-items: baseline; gap: 8px; }
+.shelf-section h2 { margin: 0; font-size: 1.02rem; }
+.shelf-section .count { font-size: .78rem; color: var(--muted); }
+/* Strip "Lanjut baca" ala storefront */
+.hero {
+  display: flex; gap: 14px; align-items: center;
+  background: linear-gradient(135deg, var(--accent-soft), transparent 70%), var(--card);
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 16px;
+}
+.hero .cover { width: 74px; flex: none; }
+.hero-body { min-width: 0; flex: 1; }
+.hero-body b { display: block; font-size: .98rem; }
+.mini-list { display: flex; gap: 10px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: thin; }
+.mini { width: 84px; flex: none; }
+.mini .tile-title { font-size: .78rem; -webkit-line-clamp: 2; }
 .list { list-style: none; padding: 0; margin: 0; }
 .list li { padding: 10px 0; border-bottom: 1px dashed var(--border); }
 .list li:last-child { border-bottom: 0; }

@@ -8,6 +8,7 @@ import { progressMap } from "@/lib/reading";
 import { DueText, StatusChip } from "@/components/ui";
 import { ReturnLoanButton } from "@/components/LoanActions";
 import { ReadingControls, RenewButton, ProgressBar } from "@/components/ReadingControls";
+import { BookCover } from "@/components/BookCover";
 
 export default async function Beranda() {
   const user = await requireUser();
@@ -32,19 +33,21 @@ export default async function Beranda() {
       </div>
 
       {lanjut.length > 0 && (
-        <div className="card" style={{ borderLeft: "3px solid var(--accent)" }} data-testid="continue-banner">
-          <div className="row between">
-            <div>
-              <b>Lanjutkan bacaanmu 📖</b>
-              <div className="small muted">
-                {lanjut[0].book.title} — halaman {lanjut[0].lastPage}
-                {lanjut[0].totalPages ? `/${lanjut[0].totalPages}` : ""} ({lanjut[0].percent}%)
-                {lanjut.length > 1 ? ` · +${lanjut.length - 1} lainnya` : ""}
-              </div>
+        <div className="hero" data-testid="continue-banner">
+          <BookCover
+            book={{ id: lanjut[0].book.id, title: lanjut[0].book.title, author: lanjut[0].book.author, category: lanjut[0].book.category, coverUrl: lanjut[0].book.coverUrl }}
+            size="sm"
+          />
+          <div className="hero-body">
+            <b>Lanjutkan bacaanmu 📖</b>
+            <div className="small muted">
+              {lanjut[0].book.title} — halaman {lanjut[0].lastPage}
+              {lanjut[0].totalPages ? `/${lanjut[0].totalPages}` : ""} ({lanjut[0].percent}%)
+              {lanjut.length > 1 ? ` · +${lanjut.length - 1} lainnya` : ""}
             </div>
-            <Link className="btn sm soft" href="/riwayat">Lanjut</Link>
+            <ProgressBar percent={lanjut[0].percent} />
           </div>
-          <ProgressBar percent={lanjut[0].percent} />
+          <Link className="btn sm soft" href="/riwayat">Lanjut</Link>
         </div>
       )}
 
@@ -59,8 +62,11 @@ export default async function Beranda() {
           const p = prog.get(l.bookId) ?? null;
           return (
             <div className="card" key={l.id} data-testid="my-loan">
-              <div className="row between">
-                <div style={{ minWidth: 0 }}>
+              <div className="row between" style={{ alignItems: "flex-start", flexWrap: "nowrap", gap: 12 }}>
+                <div style={{ width: 52, flex: "none" }}>
+                  <BookCover book={l.book} size="xs" />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <h3 style={{ margin: 0 }}>{l.book.title}</h3>
                   <div className="small muted">{l.book.author}</div>
                   <DueText dueKey={keyFromDbDate(l.dueDate)} />

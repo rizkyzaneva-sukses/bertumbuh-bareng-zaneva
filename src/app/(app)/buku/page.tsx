@@ -37,6 +37,7 @@ export default async function BukuPage() {
         slotsFull={mine.size >= MAX_ACTIVE_LOANS}
         books={books.map((b) => ({
           id: b.id, title: b.title, author: b.author, pages: b.pages, category: b.category, synopsis: b.synopsis, stock: b.stock,
+          coverUrl: b.coverUrl,
           available: Math.max(0, b.stock - (taken.get(b.id) ?? 0)),
           mine: mine.has(b.id),
           holders: holders.get(b.id) ?? [],

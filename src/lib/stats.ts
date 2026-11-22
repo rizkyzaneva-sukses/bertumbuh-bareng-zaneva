@@ -180,7 +180,7 @@ export async function getDashboard(now = new Date()) {
 export async function unfinishedFor(userId: string) {
   const rows = await prisma.readingProgress.findMany({
     where: { userId, status: "SEDANG_DIBACA" },
-    include: { book: { select: { id: true, title: true, author: true, pages: true } } },
+    include: { book: { select: { id: true, title: true, author: true, pages: true, category: true, coverUrl: true } } },
     orderBy: { updatedAt: "desc" },
   });
   return rows.map((r) => ({ ...toProgressView(r), book: r.book, updatedAt: r.updatedAt }));

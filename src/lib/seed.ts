@@ -4,6 +4,7 @@ import { prisma } from "./db";
 import { defaultPassword, hashPassword } from "./password";
 import { normalizePhone } from "./phone";
 import { normalizeCategory } from "./categories";
+import { VERIFIED_COVERS } from "./book-covers";
 
 export const SEED_ADMINS = [
   { name: "Rizky", phone: "081220210193" },
@@ -71,4 +72,31 @@ export async function seedBooksOnce() {
   const added = await seedBooks();
   await prisma.setting.create({ data: { key: "books_seeded", value: new Date().toISOString() } });
   return added;
+}
+
+/**
+ * Pasang sampul asli (terverifikasi) ke buku yang sudah ada — idempoten dan
+ * TIDAK menimpa sampul yang sudah diunggah admin (`coverUrl` kosong saja).
+ *
+ * Aman dijalankan tiap boot container: buku yang sudah punya gambar dilewati,
+ * jadi unggahan admin tidak pernah hilang karena redeploy.
+ */
+export async function seedVerifiedCovers() {
+  let applied = 0;
+  for (const [title, url] of Object.entries(VERIFIED_COVERS)) {
+    // Judul di DB produksi kadang berupa versi panjang ("Deep Work: Cara Berhasil
+    // Fokus …") sementara katalog menyimpan yang pendek ("Deep Work"). Cocokkan
+    // exact dulu, lalu awalan judul — jangan sampai sampul tertukar buku.
+    const exact = await prisma.book.updateMany({ where: { title, coverUrl: "" }, data: { coverUrl: url } });
+    if (exact.count > 0) {
+      applied += exact.count;
+      continue;
+    }
+    const prefix = await prisma.book.updateMany({
+      where: { title: { startsWith: `${title}:` }, coverUrl: "" },
+      data: { coverUrl: url },
+    });
+    applied += prefix.count;
+  }
+  return applied;
 }

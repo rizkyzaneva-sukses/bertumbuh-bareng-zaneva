@@ -7,5 +7,14 @@ export const BookBody = z.object({
   category: z.string().trim().max(100).default(""),
   synopsis: z.string().trim().max(2000).default(""),
   stock: z.number().int().min(1, "Stok minimal 1").max(99).default(1),
+  /**
+   * Sampul. Boleh URL http(s) atau path lokal hasil unggahan
+   * (`/api/books/<id>/cover`). String kosong = pakai sampul generatif.
+   */
+  coverUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === "" || /^(https?:\/\/|\/)/i.test(v), "URL sampul harus diawali http(s):// atau /")
+    .optional(),
 });
-
