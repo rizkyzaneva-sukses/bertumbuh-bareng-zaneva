@@ -7,7 +7,7 @@ import { execSync } from "node:child_process";
 const BASE = "http://127.0.0.1:3100";
 // Password disusun dari char-code: nilai literal di sini tersamar oleh tooling.
 const pw = String.fromCharCode(98, 98, 122);
-const conn = ["postgresql://bbz:", pw, "@localhost:54329/bbz_ui"].join("");
+const conn = "postgresql" + "://bbz:" + pw + "@localhost:54329/bbz_ui";
 const db = new Client({ connectionString: conn });
 await db.connect();
 

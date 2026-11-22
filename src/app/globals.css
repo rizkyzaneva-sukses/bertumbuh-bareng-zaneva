@@ -128,9 +128,14 @@ input:focus, textarea:focus, select:focus, .btn:focus-visible, a:focus-visible, 
 .spacer { flex: 1; }
 .err { color: var(--red); background: var(--red-soft); padding: 8px 12px; border-radius: 10px; font-size: .9rem; margin: 8px 0; }
 .ok { color: var(--green); background: var(--green-soft); padding: 8px 12px; border-radius: 10px; font-size: .9rem; margin: 8px 0; }
-.tabs { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 14px; padding-bottom: 2px; }
-.tabs a { white-space: nowrap; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-weight: 700; background: var(--card); }
-.tabs a.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tabs { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 14px; padding-bottom: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tabs::-webkit-scrollbar { display: none; }
+/* petunjuk halus bahwa lorong kategori bisa digeser (hanya di HP) */
+@media (max-width: 759px) {
+  .tabs { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent 100%); mask-image: linear-gradient(to right, #000 88%, transparent 100%); }
+}
+.tabs a, .tabs button { white-space: nowrap; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: var(--card); font: inherit; font-size: .9rem; font-weight: 700; line-height: 1.2; }
+.tabs a.on, .tabs button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .book { display: flex; flex-direction: column; gap: 8px; }
 .book h3 { margin: 0; }
 .book .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
