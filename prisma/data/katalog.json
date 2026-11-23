@@ -1,261 +1,381 @@
 [
- {
-  "title": "Atomic Habits",
-  "author": "James Clear",
-  "category": "Kebiasaan & produktivitas",
-  "relevansi": "Semua fungsi",
-  "alasan": "Membantu membangun kebiasaan belajar 10 menit dan memahami perubahan kecil yang konsisten."
- },
- {
-  "title": "Think Again",
-  "author": "Adam Grant",
-  "category": "Berpikir kritis & kepemimpinan",
-  "relevansi": "Semua fungsi",
-  "alasan": "Melatih keterbukaan meninjau ulang keyakinan dan menerima informasi baru."
- },
- {
-  "title": "The 7 Habits of Highly Effective People",
-  "author": "Stephen R. Covey",
-  "category": "Produktivitas & kepemimpinan",
-  "relevansi": "Semua fungsi",
-  "alasan": "Memberi dasar prioritas pribadi, tanggung jawab, dan kerja sama."
- },
- {
-  "title": "Asking the Right Questions",
-  "author": "M. Neil Browne; Stuart M. Keeley",
-  "category": "Berpikir kritis",
-  "relevansi": "Semua fungsi",
-  "alasan": "Melatih pemeriksaan alasan, bukti, dan asumsi dalam suatu pendapat."
- },
- {
-  "title": "High Output Management",
-  "author": "Andrew S. Grove",
-  "category": "Manajemen & kepemimpinan",
-  "relevansi": "COO; seluruh kepala fungsi",
-  "alasan": "Membantu pemimpin memahami hasil kerja tim, pembinaan, dan ritme manajemen."
- },
- {
-  "title": "Lateral Thinking",
-  "author": "Edward de Bono",
-  "category": "Berpikir kreatif",
-  "relevansi": "Semua fungsi",
-  "alasan": "Membantu mencari sudut pandang lain saat menghadapi masalah yang berulang."
- },
- {
-  "title": "The Mom Test",
-  "author": "Rob Fitzpatrick",
-  "category": "Riset pelanggan & peluang",
-  "relevansi": "Business Development & Expansion; Marketing & Brand; R&D",
-  "alasan": "Melatih percakapan yang menghasilkan bukti kebutuhan, bukan sekadar persetujuan sopan."
- },
- {
-  "title": "Good Strategy Bad Strategy",
-  "author": "Richard Rumelt",
-  "category": "Strategi",
-  "relevansi": "CEO/COO; Business Development & Expansion; Marketing & Brand",
-  "alasan": "Membantu memilih persoalan utama dan mengaitkan strategi dengan tindakan nyata."
- },
- {
-  "title": "Never Split the Difference",
-  "author": "Chris Voss; Tahl Raz",
-  "category": "Negosiasi & komunikasi",
-  "relevansi": "Business Development & Expansion; PR Mall & Event; Purchasing",
-  "alasan": "Memberi teknik mendengar dan bertanya untuk negosiasi mall, mitra, dan pemasok."
- },
- {
-  "title": "Testing Business Ideas",
-  "author": "David J. Bland; Alexander Osterwalder",
-  "category": "Eksperimen bisnis",
-  "relevansi": "Business Development & Expansion; Marketing & Brand; R&D",
-  "alasan": "Membantu menguji asumsi sebelum mengeluarkan investasi atau membuka lokasi baru."
- },
- {
-  "title": "The Lean Startup",
-  "author": "Eric Ries",
-  "category": "Eksperimen bisnis & inovasi",
-  "relevansi": "Business Development & Expansion; CEO/COO; R&D",
-  "alasan": "Memperkenalkan pembelajaran melalui percobaan kecil sebelum rencana diperbesar."
- },
- {
-  "title": "The Retail Revival",
-  "author": "Doug Stephens",
-  "category": "Ritel & pengalaman pelanggan",
-  "relevansi": "Business Development & Expansion; Retail Operations; Marketing & Brand",
-  "alasan": "Memperluas perspektif tentang pengalaman belanja dan peran toko fisik."
- },
- {
-  "title": "This Is Marketing",
-  "author": "Seth Godin",
-  "category": "Pemasaran & pelanggan",
-  "relevansi": "Marketing & Brand; CEO/COO; Creative",
-  "alasan": "Membantu memahami siapa pelanggan yang dilayani dan nilai apa yang dicari."
- },
- {
-  "title": "Purple Cow",
-  "author": "Seth Godin",
-  "category": "Diferensiasi merek",
-  "relevansi": "Marketing & Brand; R&D; Creative",
-  "alasan": "Mengajak tim mencari hal yang membuat produk atau pengalaman merek layak diperhatikan."
- },
- {
-  "title": "How Brands Grow",
-  "author": "Byron Sharp",
-  "category": "Pertumbuhan merek",
-  "relevansi": "Marketing & Brand; CEO/COO",
-  "alasan": "Membuka wawasan tentang perilaku pembeli dan pertumbuhan merek berbasis penelitian."
- },
- {
-  "title": "Traction",
-  "author": "Gabriel Weinberg; Justin Mares",
-  "category": "Kanal pertumbuhan",
-  "relevansi": "Marketing & Brand; Business Development & Expansion",
-  "alasan": "Memperkenalkan cara memilih dan menguji berbagai kanal pertumbuhan."
- },
- {
-  "title": "Building a StoryBrand 2.0",
-  "author": "Donald Miller",
-  "category": "Pesan merek & komunikasi",
-  "relevansi": "Marketing & Brand; Creative; Retail Operations",
-  "alasan": "Membantu menjernihkan pesan produk agar pelanggan cepat menangkap manfaatnya."
- },
- {
-  "title": "Steal Like an Artist",
-  "author": "Austin Kleon",
-  "category": "Berpikir kreatif",
-  "relevansi": "Creative; Marketing & Brand; R&D",
-  "alasan": "Bacaan ringan untuk membuka kebiasaan mencari referensi dan mengolah ide."
- },
- {
-  "title": "Creative Confidence",
-  "author": "Tom Kelley; David Kelley",
-  "category": "Berpikir kreatif & inovasi",
-  "relevansi": "Creative; R&D; Marketing & Brand",
-  "alasan": "Membantu tim percaya bahwa kemampuan menghasilkan ide dapat dilatih."
- },
- {
-  "title": "Made to Stick",
-  "author": "Chip Heath; Dan Heath",
-  "category": "Komunikasi & pesan",
-  "relevansi": "Creative; Marketing & Brand; Retail Operations",
-  "alasan": "Membantu menyampaikan gagasan dan manfaat produk agar mudah dipahami dan diingat."
- },
- {
-  "title": "Creativity, Inc.",
-  "author": "Ed Catmull; Amy Wallace",
-  "category": "Manajemen tim kreatif",
-  "relevansi": "Creative; CEO/COO; Marketing & Brand",
-  "alasan": "Memberi contoh cara mengelola masukan dan kualitas kerja dalam tim kreatif."
- },
- {
-  "title": "Thinkertoys",
-  "author": "Michael Michalko",
-  "category": "Teknik berpikir kreatif",
-  "relevansi": "Creative; Marketing & Brand; Business Development & Expansion",
-  "alasan": "Menyediakan latihan terstruktur untuk menghasilkan variasi ide."
- },
- {
-  "title": "Hey Whipple, Squeeze This",
-  "author": "Luke Sullivan",
-  "category": "Periklanan & konsep kreatif",
-  "relevansi": "Creative; Marketing & Brand",
-  "alasan": "Memperdalam cara menyusun konsep, naskah, dan eksekusi iklan."
- },
- {
-  "title": "The Goal",
-  "author": "Eliyahu M. Goldratt; Jeff Cox",
-  "category": "Operasional & hambatan proses",
-  "relevansi": "Shared Operations; Retail Operations; CEO/COO",
-  "alasan": "Melalui cerita, membantu melihat hambatan yang menahan hasil keseluruhan proses."
- },
- {
-  "title": "The Checklist Manifesto",
-  "author": "Atul Gawande",
-  "category": "Proses kerja & kualitas",
-  "relevansi": "Shared Operations; Retail Operations; HR",
-  "alasan": "Membantu menjaga langkah kritis QC, penerimaan, dan serah terima tetap terlaksana."
- },
- {
-  "title": "The Toyota Way",
-  "author": "Jeffrey K. Liker",
-  "category": "Perbaikan operasional",
-  "relevansi": "Shared Operations; Retail Operations; Supply Chain",
-  "alasan": "Memperkenalkan standar kerja, kualitas, dan perbaikan berkelanjutan."
- },
- {
-  "title": "Gemba Kaizen",
-  "author": "Masaaki Imai",
-  "category": "Perbaikan operasional",
-  "relevansi": "Shared Operations; Retail Operations; Supply Chain",
-  "alasan": "Mendorong pengamatan di tempat kerja dan perbaikan kecil yang terus menerus."
- },
- {
-  "title": "Lean Thinking",
-  "author": "James P. Womack; Daniel T. Jones",
-  "category": "Efisiensi proses",
-  "relevansi": "Shared Operations; Retail Operations; Finance",
-  "alasan": "Membantu mengenali pekerjaan yang menghabiskan waktu atau biaya tanpa menambah nilai."
- },
- {
-  "title": "Deep Work",
-  "author": "Cal Newport",
-  "category": "Fokus & produktivitas",
-  "relevansi": "Semua fungsi",
-  "alasan": "Melatih kerja fokus tanpa gangguan untuk tugas yang butuh pemikiran mendalam."
- },
- {
-  "title": "Indistractable",
-  "author": "Nir Eyal",
-  "category": "Fokus & produktivitas",
-  "relevansi": "Semua fungsi",
-  "alasan": "Membantu mengelola distraksi HP dan notifikasi agar perhatian tetap pada pekerjaan."
- },
- {
-  "title": "Essentialism",
-  "author": "Greg McKeown",
-  "category": "Fokus & prioritas",
-  "relevansi": "Semua fungsi",
-  "alasan": "Melatih memilih hal yang paling penting dan berani menolak yang tidak perlu."
- },
- {
-  "title": "The ONE Thing",
-  "author": "Gary Keller; Jay Papasan",
-  "category": "Fokus & prioritas",
-  "relevansi": "Semua fungsi; CEO/COO",
-  "alasan": "Membantu menentukan satu prioritas utama yang memudahkan pekerjaan lainnya."
- },
- {
-  "title": "Getting Things Done",
-  "author": "David Allen",
-  "category": "Produktivitas & manajemen tugas",
-  "relevansi": "Semua fungsi",
-  "alasan": "Memberi sistem mencatat dan mengelola tugas agar pikiran lebih tenang dan terarah."
- },
- {
-  "title": "Make Time",
-  "author": "Jake Knapp; John Zeratsky",
-  "category": "Fokus & produktivitas",
-  "relevansi": "Semua fungsi",
-  "alasan": "Memberi taktik harian ringan untuk menyisihkan waktu bagi hal yang penting."
- },
- {
-  "title": "Eat That Frog!",
-  "author": "Brian Tracy",
-  "category": "Produktivitas & disiplin",
-  "relevansi": "Semua fungsi",
-  "alasan": "Bacaan singkat untuk melawan kebiasaan menunda dan mengerjakan tugas terpenting lebih dulu."
- },
- {
-  "title": "Four Thousand Weeks",
-  "author": "Oliver Burkeman",
-  "category": "Manajemen waktu & perspektif",
-  "relevansi": "Semua fungsi; CEO/COO",
-  "alasan": "Memberi sudut pandang sehat tentang waktu yang terbatas tanpa terjebak tuntutan produktif terus."
- },
- {
-  "title": "Slow Productivity",
-  "author": "Cal Newport",
-  "category": "Produktivitas berkelanjutan",
-  "relevansi": "Semua fungsi; CEO/COO",
-  "alasan": "Membantu bekerja produktif tanpa burnout: lebih sedikit beban, kualitas lebih tinggi."
- }
+  {
+    "title": "Atomic Habits",
+    "author": "James Clear",
+    "category": "Kebiasaan & produktivitas",
+    "relevansi": "Semua fungsi",
+    "alasan": "Membantu membangun kebiasaan belajar 10 menit dan memahami perubahan kecil yang konsisten."
+  },
+  {
+    "title": "Think Again",
+    "author": "Adam Grant",
+    "category": "Berpikir kritis & kepemimpinan",
+    "relevansi": "Semua fungsi",
+    "alasan": "Melatih keterbukaan meninjau ulang keyakinan dan menerima informasi baru."
+  },
+  {
+    "title": "The 7 Habits of Highly Effective People",
+    "author": "Stephen R. Covey",
+    "category": "Produktivitas & kepemimpinan",
+    "relevansi": "Semua fungsi",
+    "alasan": "Memberi dasar prioritas pribadi, tanggung jawab, dan kerja sama."
+  },
+  {
+    "title": "Asking the Right Questions",
+    "author": "M. Neil Browne; Stuart M. Keeley",
+    "category": "Berpikir kritis",
+    "relevansi": "Semua fungsi",
+    "alasan": "Melatih pemeriksaan alasan, bukti, dan asumsi dalam suatu pendapat."
+  },
+  {
+    "title": "High Output Management",
+    "author": "Andrew S. Grove",
+    "category": "Manajemen & kepemimpinan",
+    "relevansi": "COO; seluruh kepala fungsi",
+    "alasan": "Membantu pemimpin memahami hasil kerja tim, pembinaan, dan ritme manajemen."
+  },
+  {
+    "title": "Lateral Thinking",
+    "author": "Edward de Bono",
+    "category": "Berpikir kreatif",
+    "relevansi": "Semua fungsi",
+    "alasan": "Membantu mencari sudut pandang lain saat menghadapi masalah yang berulang."
+  },
+  {
+    "title": "The Mom Test",
+    "author": "Rob Fitzpatrick",
+    "category": "Riset pelanggan & peluang",
+    "relevansi": "Business Development & Expansion; Marketing & Brand; R&D",
+    "alasan": "Melatih percakapan yang menghasilkan bukti kebutuhan, bukan sekadar persetujuan sopan."
+  },
+  {
+    "title": "Good Strategy Bad Strategy",
+    "author": "Richard Rumelt",
+    "category": "Strategi",
+    "relevansi": "CEO/COO; Business Development & Expansion; Marketing & Brand",
+    "alasan": "Membantu memilih persoalan utama dan mengaitkan strategi dengan tindakan nyata."
+  },
+  {
+    "title": "Never Split the Difference",
+    "author": "Chris Voss; Tahl Raz",
+    "category": "Negosiasi & komunikasi",
+    "relevansi": "Business Development & Expansion; PR Mall & Event; Purchasing",
+    "alasan": "Memberi teknik mendengar dan bertanya untuk negosiasi mall, mitra, dan pemasok."
+  },
+  {
+    "title": "Testing Business Ideas",
+    "author": "David J. Bland; Alexander Osterwalder",
+    "category": "Eksperimen bisnis",
+    "relevansi": "Business Development & Expansion; Marketing & Brand; R&D",
+    "alasan": "Membantu menguji asumsi sebelum mengeluarkan investasi atau membuka lokasi baru."
+  },
+  {
+    "title": "The Lean Startup",
+    "author": "Eric Ries",
+    "category": "Eksperimen bisnis & inovasi",
+    "relevansi": "Business Development & Expansion; CEO/COO; R&D",
+    "alasan": "Memperkenalkan pembelajaran melalui percobaan kecil sebelum rencana diperbesar."
+  },
+  {
+    "title": "The Retail Revival",
+    "author": "Doug Stephens",
+    "category": "Ritel & pengalaman pelanggan",
+    "relevansi": "Business Development & Expansion; Retail Operations; Marketing & Brand",
+    "alasan": "Memperluas perspektif tentang pengalaman belanja dan peran toko fisik."
+  },
+  {
+    "title": "This Is Marketing",
+    "author": "Seth Godin",
+    "category": "Pemasaran & pelanggan",
+    "relevansi": "Marketing & Brand; CEO/COO; Creative",
+    "alasan": "Membantu memahami siapa pelanggan yang dilayani dan nilai apa yang dicari."
+  },
+  {
+    "title": "Purple Cow",
+    "author": "Seth Godin",
+    "category": "Diferensiasi merek",
+    "relevansi": "Marketing & Brand; R&D; Creative",
+    "alasan": "Mengajak tim mencari hal yang membuat produk atau pengalaman merek layak diperhatikan."
+  },
+  {
+    "title": "How Brands Grow",
+    "author": "Byron Sharp",
+    "category": "Pertumbuhan merek",
+    "relevansi": "Marketing & Brand; CEO/COO",
+    "alasan": "Membuka wawasan tentang perilaku pembeli dan pertumbuhan merek berbasis penelitian."
+  },
+  {
+    "title": "Traction",
+    "author": "Gabriel Weinberg; Justin Mares",
+    "category": "Kanal pertumbuhan",
+    "relevansi": "Marketing & Brand; Business Development & Expansion",
+    "alasan": "Memperkenalkan cara memilih dan menguji berbagai kanal pertumbuhan."
+  },
+  {
+    "title": "Building a StoryBrand 2.0",
+    "author": "Donald Miller",
+    "category": "Pesan merek & komunikasi",
+    "relevansi": "Marketing & Brand; Creative; Retail Operations",
+    "alasan": "Membantu menjernihkan pesan produk agar pelanggan cepat menangkap manfaatnya."
+  },
+  {
+    "title": "Steal Like an Artist",
+    "author": "Austin Kleon",
+    "category": "Berpikir kreatif",
+    "relevansi": "Creative; Marketing & Brand; R&D",
+    "alasan": "Bacaan ringan untuk membuka kebiasaan mencari referensi dan mengolah ide."
+  },
+  {
+    "title": "Creative Confidence",
+    "author": "Tom Kelley; David Kelley",
+    "category": "Berpikir kreatif & inovasi",
+    "relevansi": "Creative; R&D; Marketing & Brand",
+    "alasan": "Membantu tim percaya bahwa kemampuan menghasilkan ide dapat dilatih."
+  },
+  {
+    "title": "Made to Stick",
+    "author": "Chip Heath; Dan Heath",
+    "category": "Komunikasi & pesan",
+    "relevansi": "Creative; Marketing & Brand; Retail Operations",
+    "alasan": "Membantu menyampaikan gagasan dan manfaat produk agar mudah dipahami dan diingat."
+  },
+  {
+    "title": "Creativity, Inc.",
+    "author": "Ed Catmull; Amy Wallace",
+    "category": "Manajemen tim kreatif",
+    "relevansi": "Creative; CEO/COO; Marketing & Brand",
+    "alasan": "Memberi contoh cara mengelola masukan dan kualitas kerja dalam tim kreatif."
+  },
+  {
+    "title": "Thinkertoys",
+    "author": "Michael Michalko",
+    "category": "Teknik berpikir kreatif",
+    "relevansi": "Creative; Marketing & Brand; Business Development & Expansion",
+    "alasan": "Menyediakan latihan terstruktur untuk menghasilkan variasi ide."
+  },
+  {
+    "title": "Hey Whipple, Squeeze This",
+    "author": "Luke Sullivan",
+    "category": "Periklanan & konsep kreatif",
+    "relevansi": "Creative; Marketing & Brand",
+    "alasan": "Memperdalam cara menyusun konsep, naskah, dan eksekusi iklan."
+  },
+  {
+    "title": "The Goal",
+    "author": "Eliyahu M. Goldratt; Jeff Cox",
+    "category": "Operasional & hambatan proses",
+    "relevansi": "Shared Operations; Retail Operations; CEO/COO",
+    "alasan": "Melalui cerita, membantu melihat hambatan yang menahan hasil keseluruhan proses."
+  },
+  {
+    "title": "The Checklist Manifesto",
+    "author": "Atul Gawande",
+    "category": "Proses kerja & kualitas",
+    "relevansi": "Shared Operations; Retail Operations; HR",
+    "alasan": "Membantu menjaga langkah kritis QC, penerimaan, dan serah terima tetap terlaksana."
+  },
+  {
+    "title": "The Toyota Way",
+    "author": "Jeffrey K. Liker",
+    "category": "Perbaikan operasional",
+    "relevansi": "Shared Operations; Retail Operations; Supply Chain",
+    "alasan": "Memperkenalkan standar kerja, kualitas, dan perbaikan berkelanjutan."
+  },
+  {
+    "title": "Gemba Kaizen",
+    "author": "Masaaki Imai",
+    "category": "Perbaikan operasional",
+    "relevansi": "Shared Operations; Retail Operations; Supply Chain",
+    "alasan": "Mendorong pengamatan di tempat kerja dan perbaikan kecil yang terus menerus."
+  },
+  {
+    "title": "Lean Thinking",
+    "author": "James P. Womack; Daniel T. Jones",
+    "category": "Efisiensi proses",
+    "relevansi": "Shared Operations; Retail Operations; Finance",
+    "alasan": "Membantu mengenali pekerjaan yang menghabiskan waktu atau biaya tanpa menambah nilai."
+  },
+  {
+    "title": "Deep Work",
+    "author": "Cal Newport",
+    "category": "Fokus & produktivitas",
+    "relevansi": "Semua fungsi",
+    "alasan": "Melatih kerja fokus tanpa gangguan untuk tugas yang butuh pemikiran mendalam."
+  },
+  {
+    "title": "Indistractable",
+    "author": "Nir Eyal",
+    "category": "Fokus & produktivitas",
+    "relevansi": "Semua fungsi",
+    "alasan": "Membantu mengelola distraksi HP dan notifikasi agar perhatian tetap pada pekerjaan."
+  },
+  {
+    "title": "Essentialism",
+    "author": "Greg McKeown",
+    "category": "Fokus & prioritas",
+    "relevansi": "Semua fungsi",
+    "alasan": "Melatih memilih hal yang paling penting dan berani menolak yang tidak perlu."
+  },
+  {
+    "title": "The ONE Thing",
+    "author": "Gary Keller; Jay Papasan",
+    "category": "Fokus & prioritas",
+    "relevansi": "Semua fungsi; CEO/COO",
+    "alasan": "Membantu menentukan satu prioritas utama yang memudahkan pekerjaan lainnya."
+  },
+  {
+    "title": "Getting Things Done",
+    "author": "David Allen",
+    "category": "Produktivitas & manajemen tugas",
+    "relevansi": "Semua fungsi",
+    "alasan": "Memberi sistem mencatat dan mengelola tugas agar pikiran lebih tenang dan terarah."
+  },
+  {
+    "title": "Make Time",
+    "author": "Jake Knapp; John Zeratsky",
+    "category": "Fokus & produktivitas",
+    "relevansi": "Semua fungsi",
+    "alasan": "Memberi taktik harian ringan untuk menyisihkan waktu bagi hal yang penting."
+  },
+  {
+    "title": "Eat That Frog!",
+    "author": "Brian Tracy",
+    "category": "Produktivitas & disiplin",
+    "relevansi": "Semua fungsi",
+    "alasan": "Bacaan singkat untuk melawan kebiasaan menunda dan mengerjakan tugas terpenting lebih dulu."
+  },
+  {
+    "title": "Four Thousand Weeks",
+    "author": "Oliver Burkeman",
+    "category": "Manajemen waktu & perspektif",
+    "relevansi": "Semua fungsi; CEO/COO",
+    "alasan": "Memberi sudut pandang sehat tentang waktu yang terbatas tanpa terjebak tuntutan produktif terus."
+  },
+  {
+    "title": "Slow Productivity",
+    "author": "Cal Newport",
+    "category": "Produktivitas berkelanjutan",
+    "relevansi": "Semua fungsi; CEO/COO",
+    "alasan": "Membantu bekerja produktif tanpa burnout: lebih sedikit beban, kualitas lebih tinggi."
+  },
+  {
+    "title": "Rahasia Syukur",
+    "author": "Abdurrahman Syarif",
+    "category": "Spiritual",
+    "relevansi": "Semua fungsi",
+    "alasan": "Jalan menuju hidup penuh berkah: melatih syukur sebagai cara memandang nikmat, bukan sekadar ucapan.",
+    "sinopsis": "Jalan menuju hidup penuh berkah: melatih syukur sebagai cara memandang nikmat, bukan sekadar ucapan."
+  },
+  {
+    "title": "Secerdas Aisyah",
+    "author": "Umi Dilla",
+    "category": "Spiritual",
+    "relevansi": "Semua fungsi",
+    "alasan": "Meneladani kecerdasan, keteguhan, dan kontribusi Aisyah radhiyallahu anha dalam ilmu dan kehidupan.",
+    "sinopsis": "Meneladani kecerdasan, keteguhan, dan kontribusi Aisyah radhiyallahu anha dalam ilmu dan kehidupan."
+  },
+  {
+    "title": "Sekuat Khadijah",
+    "author": "Umi Dilla",
+    "category": "Spiritual",
+    "relevansi": "Semua fungsi",
+    "alasan": "Ketangguhan Khadijah radhiyallahu anha sebagai teladan kemandirian, keteguhan, dan dukungan pada keluarga.",
+    "sinopsis": "Ketangguhan Khadijah radhiyallahu anha sebagai teladan kemandirian, keteguhan, dan dukungan pada keluarga."
+  },
+  {
+    "title": "Semulia Fatimah",
+    "author": "Umi Dilla",
+    "category": "Spiritual",
+    "relevansi": "Semua fungsi",
+    "alasan": "Kemuliaan akhlak Fatimah radhiyallahu anha sebagai teladan kesederhanaan dan bakti.",
+    "sinopsis": "Kemuliaan akhlak Fatimah radhiyallahu anha sebagai teladan kesederhanaan dan bakti."
+  },
+  {
+    "title": "The Power of Personality (David Miller)",
+    "author": "David Miller",
+    "category": "Pengembangan Diri",
+    "relevansi": "Semua fungsi",
+    "alasan": "Mengembangkan kekuatan kepribadian untuk hidup yang lebih positif dan produktif.",
+    "sinopsis": "Mengembangkan kekuatan kepribadian untuk hidup yang lebih positif dan produktif."
+  },
+  {
+    "title": "Kekuatan Sabar",
+    "author": "Abdurrahman Syarif",
+    "category": "Spiritual",
+    "relevansi": "Semua fungsi",
+    "alasan": "Menemukan keteguhan hati dalam kehidupan lewat sabar dalam sudut pandang Islam.",
+    "sinopsis": "Menemukan keteguhan hati dalam kehidupan lewat sabar dalam sudut pandang Islam."
+  },
+  {
+    "title": "The Art of Manifestation",
+    "author": "David Miller",
+    "category": "Pengembangan Diri",
+    "relevansi": "Semua fungsi",
+    "alasan": "Menerapkan seni manifestasi untuk mencapai keberhasilan secara terarah.",
+    "sinopsis": "Menerapkan seni manifestasi untuk mencapai keberhasilan secara terarah."
+  },
+  {
+    "title": "Bye-Bye Burnout",
+    "author": "Ananta Susilo",
+    "category": "Pengembangan Diri",
+    "relevansi": "Semua fungsi",
+    "alasan": "Rahasia hidup seimbang agar terhindar dari kelelahan kerja berkepanjangan.",
+    "sinopsis": "Rahasia hidup seimbang agar terhindar dari kelelahan kerja berkepanjangan."
+  },
+  {
+    "title": "Keajaiban tentang Memaafkan",
+    "author": "Abdurrahman Syarif",
+    "category": "Spiritual",
+    "relevansi": "Semua fungsi",
+    "alasan": "Jalan menuju kedamaian hati lewat memaafkan dalam sudut pandang Islam.",
+    "sinopsis": "Jalan menuju kedamaian hati lewat memaafkan dalam sudut pandang Islam."
+  },
+  {
+    "title": "Sebuah Panduan Menyayangi Diri Sendiri",
+    "author": "Endah Tofani",
+    "category": "Pengembangan Diri",
+    "relevansi": "Semua fungsi",
+    "alasan": "Panduan praktis merawat diri sendiri secara sehat, bukan sekadar memanjakan diri.",
+    "sinopsis": "Panduan praktis merawat diri sendiri secara sehat, bukan sekadar memanjakan diri."
+  },
+  {
+    "title": "Growth Mindset Effect",
+    "author": "David Miller",
+    "category": "Pengembangan Diri",
+    "relevansi": "Semua fungsi",
+    "alasan": "Terapi pengembangan diri dan kehidupan yang lebih baik lewat pola pikir tumbuh.",
+    "sinopsis": "Terapi pengembangan diri dan kehidupan yang lebih baik lewat pola pikir tumbuh."
+  },
+  {
+    "title": "Kekuatan Pikiran Positif",
+    "author": "Abdurrahman Syarif",
+    "category": "Spiritual",
+    "relevansi": "Semua fungsi",
+    "alasan": "Pikiran positif dalam sudut pandang Islam untuk menjalani hari dengan lebih lapang.",
+    "sinopsis": "Pikiran positif dalam sudut pandang Islam untuk menjalani hari dengan lebih lapang."
+  },
+  {
+    "title": "Way to Success",
+    "author": "David Miller",
+    "category": "Pengembangan Diri",
+    "relevansi": "Semua fungsi",
+    "alasan": "Sukses dengan metode AKU: ambisi, keinginan, dan usaha yang dijalankan terukur.",
+    "sinopsis": "Sukses dengan metode AKU: ambisi, keinginan, dan usaha yang dijalankan terukur."
+  },
+  {
+    "title": "Untuk Kamu yang Malas dan Suka Menunda",
+    "author": "Noura",
+    "category": "Pengembangan Diri",
+    "relevansi": "Semua fungsi",
+    "alasan": "Melawan kebiasaan menunda: kamu mungkin bisa menunda, tapi waktu tidak menunggu.",
+    "sinopsis": "Melawan kebiasaan menunda: kamu mungkin bisa menunda, tapi waktu tidak menunggu."
+  },
+  {
+    "title": "The Emotional Power",
+    "author": "David Miller",
+    "category": "Pengembangan Diri",
+    "relevansi": "Semua fungsi",
+    "alasan": "Mengelola perasaan untuk kehidupan yang lebih bermakna.",
+    "sinopsis": "Mengelola perasaan untuk kehidupan yang lebih bermakna."
+  }
 ]
