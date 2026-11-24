@@ -10,6 +10,8 @@ export function Nav({ isAdmin, variant }: { isAdmin: boolean; variant: "top" | "
     { href: "/", label: "Beranda", icon: "🏠" },
     { href: "/buku", label: "Buku", icon: "📚" },
     { href: "/riwayat", label: "Riwayat", icon: "📖" },
+    { href: "/usulan", label: "Usulan", icon: "💡" },
+    { href: "/notifikasi", label: "Notif", icon: "🔔" },
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
     { href: "/panduan", label: "Panduan", icon: "📘" },
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: "🛠️" }] : []),

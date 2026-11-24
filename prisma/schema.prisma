@@ -97,6 +97,8 @@ model User {
   loans              Loan[]
   progresses         ReadingProgress[]
   waPrompts          WaPrompt[]
+  bookRequests       BookRequest[]
+  pushSubscriptions  PushSubscription[]
 }
 
 model Book {
@@ -209,4 +211,64 @@ model ReminderLog {
 model Setting {
   key   String @id
   value String
+}
+
+/// Usulan buku dari anggota.
+///
+/// Bos: karyawan minta buku lewat bot WA, lalu bot merekap di app supaya admin
+/// tinggal lihat satu daftar — tidak perlu scroll chat WA satu per satu.
+/// Cukup judul; link Shopee/URL opsional (membantu admin cek harga & edisi).
+/// `phone` disimpan sebagai cadangan kalau pengirimnya bukan anggota terdaftar,
+/// supaya usulan dari nomor luar app tidak hilang.
+enum RequestStatus {
+  BARU
+  DIPERTIMBANGKAN
+  DIBELI
+  DITOLAK
+}
+
+model BookRequest {
+  id        String        @id @default(cuid())
+  /// Null = pengirimnya bukan anggota terdaftar (dicatat lewat `phone`).
+  userId    String?
+  phone     String
+  /// Nama pengirim apa adanya (dari WA / profil).
+  name      String        @default("")
+  title     String
+  /// Link Shopee / toko lain. Opsional — Bos: "atau judul buku aja juga cukup".
+  url       String        @default("")
+  /// Catatan bebas dari pengirim.
+  note      String        @default("")
+  /// "WA" = masuk lewat bot, "APP" = diketik di app.
+  source    String        @default("WA")
+  status    RequestStatus @default(BARU)
+  /// Teks asli pesan WA, untuk jejak audit kalau parsing salah.
+  rawText   String        @default("")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+/// Langganan Web Push per perangkat.
+///
+/// Satu user boleh punya banyak baris (HP + laptop). `endpoint` unik: kalau
+/// perangkat pindah tangan (logout A, login B), kepemilikan DIPINDAHKAN lewat
+/// upsert — bukan digandakan. Endpoint yang dibalas 404/410 oleh FCM/APNs
+/// dihapus otomatis saat kirim, supaya tabel tidak menumpuk sampah.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  /// URL endpoint dari browser — unik per perangkat.
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

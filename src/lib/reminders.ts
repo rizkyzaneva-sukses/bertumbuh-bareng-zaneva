@@ -5,6 +5,7 @@ import { returnUrl } from "./tokens";
 import { wahaSendText, type SendText } from "./waha";
 import { displayPhone } from "./phone";
 import { deliverPendingPrompts, pollPromptReplies } from "./wa-prompts";
+import { pollUsulanWa } from "./wa-usulan";
 import type { ReminderKind } from "../generated/prisma/client";
 
 /** Jam kirim pengingat (WIB). Job boleh jalan kapan saja; mengirim hanya di jendela ini. */
@@ -260,8 +261,21 @@ export function startReminderScheduler() {
   setTimeout(tickPrompts, 90_000);
   setInterval(tickPrompts, 5 * 60_000).unref?.();
 
+  // Usulan buku lewat WA (`#usul ...`). Terpisah dari tickPrompts supaya
+  // kegagalan salah satunya tidak mematikan yang lain.
+  const tickUsulan = async () => {
+    try {
+      const r = await pollUsulanWa();
+      if (r.usulan) console.log("[usulan] tercatat:", JSON.stringify(r));
+    } catch (e) {
+      console.error("[usulan] gagal poll:", e);
+    }
+  };
+  setTimeout(tickUsulan, 150_000);
+  setInterval(tickUsulan, 5 * 60_000).unref?.();
+
   console.log(
     "[pengingat] scheduler aktif (cek tiap 5 menit, kirim 08.00-20.00 WIB) · " +
-      "pertanyaan beres-baca + poll jawaban WA juga aktif",
+      "pertanyaan beres-baca + poll jawaban WA + usulan buku juga aktif",
   );
 }

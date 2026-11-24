@@ -10,6 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin/pinjaman">Pinjaman</Link>
         <Link href="/admin/buku">Buku</Link>
         <Link href="/admin/pengguna">Pengguna</Link>
+        <Link href="/admin/usulan">Usulan Buku</Link>
         <Link href="/admin/pengingat">Pengingat WA</Link>
       </div>
       {children}

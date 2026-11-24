@@ -1,37 +1,69 @@
-// Service worker sederhana: cache aset statis, halaman selalu dari jaringan (data pribadi tidak disimpan),
-// dengan halaman offline sebagai cadangan.
-const CACHE = "bbz-v1";
-const OFFLINE_URL = "/offline.html";
-const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png", "/apple-touch-icon.png"];
+/*
+ * Service worker Web Push — SENGAJA TANPA CACHING.
+ *
+ * Tugasnya cuma dua: terima `push` lalu tampilkan notifikasi, dan tangani
+ * `notificationclick` dengan membuka halaman yang relevan.
+ *
+ * Kenapa tidak offline-first: app ini menyajikan data pinjaman & progres baca
+ * yang berubah tiap hari. Kalau halaman di-cache, anggota bisa submit form ke
+ * state lama lalu mengira datanya hilang. Notifikasi tidak butuh cache sama
+ * sekali, jadi lebih aman tanpa.
+ */
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Bertumbuh Bareng Zaneva", body: event.data ? event.data.text() : "" };
+  }
+
+  const title = data.title || "Bertumbuh Bareng Zaneva";
+  const options = {
+    body: data.body || "",
+    icon: data.icon || "/icons/icon-192.png",
+    badge: data.badge || "/icons/badge-96.png",
+    // `tag` sama = notifikasi lama diganti, bukan menumpuk jadi 10 baris.
+    tag: data.tag || "bbz-info",
+    renotify: true,
+    // Android mudah membuang notifikasi yang tidak requireInteraction.
+    requireInteraction: true,
+    // silent:false penting — channel senyap bisa dimatikan tanpa sadar.
+    silent: false,
+    vibrate: [120, 60, 120],
+    // Anggota TIDAK boleh diarahkan ke /admin: halaman itu dijaga role admin,
+    // jadi mereka akan mendarat di "Akses ditolak" dan melapor app error.
+    data: { url: data.url || "/buku" },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/buku";
+
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      // Kalau tab app sudah terbuka, fokuskan & arahkan — jangan buka tab baru.
+      for (const c of all) {
+        if (c.url && new URL(c.url).origin === self.location.origin) {
+          await c.focus();
+          if ("navigate" in c) {
+            try {
+              await c.navigate(target);
+            } catch {
+              /* navigate bisa ditolak; fokus saja sudah cukup */
+            }
+          }
+          return;
+        }
+      }
+      await self.clients.openWindow(target);
+    })(),
   );
-});
-self.addEventListener("fetch", (e) => {
-  const req = e.request;
-  if (req.method !== "GET") return;
-  const url = new URL(req.url);
-  if (url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
-  if (req.mode === "navigate") {
-    e.respondWith(fetch(req).catch(() => caches.match(OFFLINE_URL)));
-    return;
-  }
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
-    e.respondWith(
-      caches.match(req).then(
-        (hit) =>
-          hit ||
-          fetch(req).then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-            return res;
-          }),
-      ),
-    );
-  }
 });
