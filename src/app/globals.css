@@ -76,10 +76,18 @@ p { margin: 0 0 .75rem; }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
   display: flex; justify-content: space-around;
   background: var(--card); border-top: 1px solid var(--border);
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  padding: 6px 2px calc(6px + env(safe-area-inset-bottom));
 }
-.bottomnav a { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .72rem; padding: 4px 10px; min-width: 64px; }
-.bottomnav a .ic { font-size: 1.35rem; line-height: 1; }
+/* Item WAJIB fleksibel: `min-width: 64px` dulu membuat 7 item = 448px padahal
+   layar cuma 390px, sehingga menu terakhir terpotong dan tidak terjangkau
+   (bottom nav tidak bisa digeser). Sekarang tiap item membagi rata. */
+.bottomnav a {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: .66rem; padding: 4px 2px;
+  flex: 1 1 0; min-width: 0;
+}
+.bottomnav a .lbl { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
+.bottomnav a .ic { font-size: 1.3rem; line-height: 1; }
 .bottomnav a.on { color: var(--accent); }
 @media (min-width: 760px) {
   .desknav { display: flex; }
@@ -136,9 +144,14 @@ input:focus, textarea:focus, select:focus, .btn:focus-visible, a:focus-visible, 
   .tabs { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent 100%); mask-image: linear-gradient(to right, #000 88%, transparent 100%); }
 }
 /* Tab admin dirapatkan supaya 5 tab muat di layar 390px tanpa terpotong. */
-.tabs a, .tabs button { white-space: nowrap; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: var(--card); font: inherit; font-size: .9rem; font-weight: 700; line-height: 1.2; }
-.admin-tabs { gap: 4px; }
-.admin-tabs a { padding: 7px 10px; font-size: .82rem; }
+/* Tab admin: 5 tab tidak muat satu baris di HP 390px (terukur 443px, jadi
+   "Usulan Buku" terpotong). Dibuat WRAP dua baris — lebih baik turun baris
+   daripada ada menu yang tidak terlihat. Mask dihapus karena tidak relevan. */
+.admin-tabs {
+  flex-wrap: wrap; overflow: visible; gap: 5px;
+  -webkit-mask-image: none; mask-image: none;
+}
+.admin-tabs a { padding: 6px 11px; font-size: .8rem; }
 .tabs a.on, .tabs button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .book { display: flex; flex-direction: column; gap: 8px; }
 .book h3 { margin: 0; }
