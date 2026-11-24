@@ -10,6 +10,7 @@ import { ReturnLoanButton } from "@/components/LoanActions";
 import { ReadingControls, RenewButton, ProgressBar } from "@/components/ReadingControls";
 import { BookCover } from "@/components/BookCover";
 import { addDays, jakartaKey } from "@/lib/dates";
+import { getLoanWorkingDays } from "@/lib/settings";
 
 /** Buku dianggap "baru" selama 7 hari sejak masuk rak. */
 const BARU_HARI = 7;
@@ -17,12 +18,13 @@ const BARU_HARI = 7;
 export default async function Beranda() {
   const user = await requireUser();
   const baruSejak = new Date(addDays(jakartaKey(new Date()), -(BARU_HARI - 1)) + "T00:00:00Z");
-  const [loans, dash, prog, lanjut, baru] = await Promise.all([
+  const [loans, dash, prog, lanjut, baru, lamaPinjam] = await Promise.all([
     prisma.loan.findMany({ where: { userId: user.id }, include: { book: true }, orderBy: { borrowedAt: "desc" } }),
     getDashboard(),
     progressMap(user.id),
     unfinishedFor(user.id),
     prisma.book.findMany({ where: { createdAt: { gte: baruSejak } }, orderBy: { createdAt: "desc" }, take: 12 }),
+    getLoanWorkingDays(),
   ]);
   const active = loans.filter((l) => !l.returnedAt);
   const done = loans.filter((l) => l.returnedAt);
@@ -116,7 +118,7 @@ export default async function Beranda() {
               />
 
               <div className="row" style={{ marginTop: 10, gap: 8 }}>
-                <RenewButton loanId={l.id} dueLabel={keyFromDbDate(l.dueDate)} renewLeft={Math.max(0, 2 - l.renewCount)} />
+                <RenewButton loanId={l.id} dueLabel={keyFromDbDate(l.dueDate)} renewLeft={Math.max(0, 2 - l.renewCount)} lamaHari={lamaPinjam} />
                 <ReturnLoanButton loanId={l.id} title={l.book.title} />
               </div>
             </div>

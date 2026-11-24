@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import { api } from "./api";
 import { CONDITIONS, CONDITION_HINT, CONDITION_LABEL, type Condition } from "@/lib/conditions";
 
-export function BorrowButton({ bookId, title, disabled, label = "Pinjam" }: { bookId: string; title: string; disabled?: boolean; label?: string }) {
+export function BorrowButton({ bookId, title, disabled, label = "Pinjam", lamaHari }: { bookId: string; title: string; disabled?: boolean; label?: string; lamaHari?: number }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   async function go() {
-    if (!confirm(`Pinjam "${title}"? Lama pinjam 3 hari kerja (Ahad tidak dihitung).`)) return;
+    const lama = lamaHari ?? 7;
+    if (!confirm(`Pinjam "${title}"? Lama pinjam ${lama} hari kerja (Ahad tidak dihitung).`)) return;
     setBusy(true);
     setMsg(null);
     const r = await api<{ loan?: { dueDate: string } }>("/api/loans", "POST", { bookId });

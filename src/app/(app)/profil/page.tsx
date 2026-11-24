@@ -2,7 +2,9 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { displayPhone } from "@/lib/phone";
+import { getLoanWorkingDays } from "@/lib/settings";
 import { ChangePasswordForm, LogoutButton } from "@/components/ProfileClient";
+import { LoanDaysForm } from "@/components/LoanDaysForm";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const metadata = { title: "Profil" };
@@ -10,9 +12,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ProfilPage() {
   const user = await requireUser();
-  const [perangkat, usulan] = await Promise.all([
+  const [perangkat, usulan, lamaPinjam] = await Promise.all([
     prisma.pushSubscription.count({ where: { userId: user.id } }),
     prisma.bookRequest.count({ where: { userId: user.id, status: "BARU" } }),
+    getLoanWorkingDays(),
   ]);
   return (
     <>
@@ -49,6 +52,14 @@ export default async function ProfilPage() {
           </Link>
         )}
       </div>
+
+      {/* Hanya admin. Anggota cukup tahu angkanya di Panduan & halaman Buku. */}
+      {user.role === "ADMIN" && (
+        <div className="card" data-testid="aturan-pinjam">
+          <h2>Aturan pinjam</h2>
+          <LoanDaysForm awal={lamaPinjam} />
+        </div>
+      )}
 
       <div className="card">
         <h2>Tampilan</h2>

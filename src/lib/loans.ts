@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { computeDueDate, dateFromKey, jakartaKey, keyFromDbDate } from "./dates";
+import { getLoanWorkingDays } from "./settings";
 import { makeReturnToken, newNonce } from "./tokens";
 import { stockLoss, type Condition } from "./conditions";
 import { queueAfterReturnPrompt } from "./wa-prompts";
@@ -11,6 +12,9 @@ export { AppError } from "./errors";
 export { MAX_ACTIVE_LOANS, effectiveStatus } from "./loan-status";
 
 export async function borrowBook(userId: string, bookId: string, now = new Date()) {
+  // Dibaca SEBELUM transaksi: aturan pinjam bisa diubah admin kapan saja, dan
+  // query Setting di dalam transaksi panjang hanya menahan lock lebih lama.
+  const loanDays = await getLoanWorkingDays();
   return prisma.$transaction(async (tx) => {
     // kunci baris user & buku supaya batas 2 buku dan stok aman dari balapan request
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
@@ -24,7 +28,7 @@ export async function borrowBook(userId: string, bookId: string, now = new Date(
       throw new AppError("ALREADY", "Kamu sedang meminjam buku ini.", 409);
     const taken = await tx.loan.count({ where: { bookId, returnedAt: null } });
     if (taken >= book.stock) throw new AppError("NO_STOCK", "Semua eksemplar buku ini sedang dipinjam.", 409);
-    const due = computeDueDate(jakartaKey(now));
+    const due = computeDueDate(jakartaKey(now), loanDays);
     return tx.loan.create({
       data: { userId, bookId, borrowedAt: now, dueDate: dateFromKey(due), status: "DIPINJAM" },
       include: { book: true },

@@ -28,7 +28,7 @@ export type CatalogBook = {
  * sebagai SAMPUL 2:3 yang besar (bukan baris teks), kategori jadi "lorong" yang
  * bisa disaring, dan tombol pinjam menempel di bawah sampul seperti tombol beli.
  */
-export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; slotsFull: boolean; isAdmin: boolean }) {
+export function Catalog({ books, slotsFull, isAdmin, lamaHari }: { books: CatalogBook[]; slotsFull: boolean; isAdmin: boolean; lamaHari: number }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
   const cats = useMemo(() => categoriesInUse(books.map((b) => b.category)), [books]);
@@ -87,7 +87,7 @@ export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; s
               </div>
               <div className="shelf">
                 {g.items.map((b) => (
-                  <Tile key={b.id} b={b} slotsFull={slotsFull} isAdmin={isAdmin} />
+                  <Tile key={b.id} b={b} slotsFull={slotsFull} isAdmin={isAdmin} lamaHari={lamaHari} />
                 ))}
               </div>
             </section>
@@ -95,7 +95,7 @@ export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; s
       ) : (
         <div className="shelf">
           {shown.map((b) => (
-            <Tile key={b.id} b={b} slotsFull={slotsFull} isAdmin={isAdmin} />
+            <Tile key={b.id} b={b} slotsFull={slotsFull} isAdmin={isAdmin} lamaHari={lamaHari} />
           ))}
         </div>
       )}
@@ -103,7 +103,7 @@ export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; s
   );
 }
 
-function Tile({ b, slotsFull, isAdmin }: { b: CatalogBook; slotsFull: boolean; isAdmin: boolean }) {
+function Tile({ b, slotsFull, isAdmin, lamaHari }: { b: CatalogBook; slotsFull: boolean; isAdmin: boolean; lamaHari: number }) {
   const out = b.available < 1;
   return (
     <article className="tile" data-testid="book-card">
@@ -145,6 +145,7 @@ function Tile({ b, slotsFull, isAdmin }: { b: CatalogBook; slotsFull: boolean; i
         <BorrowButton
           bookId={b.id}
           title={b.title}
+          lamaHari={lamaHari}
           disabled={b.mine || b.available < 1 || slotsFull}
           label={b.mine ? "Sedang dipinjam" : "Pinjam"}
         />

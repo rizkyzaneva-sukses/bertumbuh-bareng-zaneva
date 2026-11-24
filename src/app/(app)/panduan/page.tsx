@@ -2,13 +2,14 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { RENEW_LIMIT } from "@/lib/reading";
 import { MAX_ACTIVE_LOANS } from "@/lib/loan-status";
-import { LOAN_WORKING_DAYS } from "@/lib/dates";
+import { getLoanWorkingDays } from "@/lib/settings";
 
 export const metadata = { title: "Panduan" };
 
 export default async function PanduanPage() {
   const user = await requireUser();
   const isAdmin = user.role === "ADMIN";
+  const lamaPinjam = await getLoanWorkingDays();
 
   return (
     <>
@@ -18,7 +19,7 @@ export default async function PanduanPage() {
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Ringkasnya</h2>
         <ul className="list">
-          <li><b>Pinjam</b> maksimal {MAX_ACTIVE_LOANS} buku sekaligus, {LOAN_WORKING_DAYS} hari kerja (Ahad tidak dihitung).</li>
+          <li><b>Pinjam</b> maksimal {MAX_ACTIVE_LOANS} buku sekaligus, {lamaPinjam} hari kerja (Ahad tidak dihitung).</li>
           <li><b>Tidak perlu balikin dulu</b> untuk memperpanjang — jatuh tempo digeser, maksimal {RENEW_LIMIT}×.</li>
           <li><b>Progres baca tersimpan</b> per buku, bukan per peminjaman. Kepotong pindah buku? Lanjut lagi kapan pun.</li>
           <li><b>Selesai</b> ditandai olehmu (klik di app, atau balas <code>1</code> di WA) — bukan otomatis saat buku dikembalikan.</li>
@@ -30,7 +31,7 @@ export default async function PanduanPage() {
         <ol style={{ paddingLeft: 20, margin: 0 }}>
           <li>Buka menu <b>Buku</b>.</li>
           <li>Cari judul/penulis, atau saring lewat kategori.</li>
-          <li>Ketuk <b>Pinjam</b>. Jatuh tempo otomatis dihitung: 3 hari kerja, Ahad dilewati.</li>
+          <li>Ketuk <b>Pinjam</b>. Jatuh tempo otomatis dihitung: {lamaPinjam} hari kerja, Ahad dilewati.</li>
         </ol>
         <p className="small muted" style={{ marginTop: 10, marginBottom: 0 }}>
           Slot penuh ({MAX_ACTIVE_LOANS} buku)? Kembalikan salah satu, atau perpanjang yang ada.
@@ -75,7 +76,7 @@ export default async function PanduanPage() {
         <ol style={{ paddingLeft: 20, margin: 0 }}>
           <li>Buka <Link href="/riwayat">Riwayat</Link> (atau Beranda).</li>
           <li>Pada buku yang sedang dipinjam, ketuk <b>Perpanjang (sisa N×)</b>.</li>
-          <li>Jatuh tempo digeser 3 hari kerja lagi. Buku tetap di tanganmu.</li>
+          <li>Jatuh tempo digeser {lamaPinjam} hari kerja lagi. Buku tetap di tanganmu.</li>
         </ol>
         <p className="small" style={{ marginTop: 10 }}>
           <b>Kenapa kadang ditolak?</b> Kalau buku itu sedang ditunggu orang lain (semua eksemplar habis dipinjam),

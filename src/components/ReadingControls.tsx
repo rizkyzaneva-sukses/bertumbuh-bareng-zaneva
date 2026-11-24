@@ -124,13 +124,13 @@ export function ReadingControls({
  * batas perpanjangan belum habis. Server yang memutuskan (bisa menolak kalau
  * bukunya diantre orang lain), UI hanya menampilkan hasilnya.
  */
-export function RenewButton({ loanId, dueLabel, renewLeft }: { loanId: string; dueLabel: string; renewLeft: number }) {
+export function RenewButton({ loanId, dueLabel, renewLeft, lamaHari }: { loanId: string; dueLabel: string; renewLeft: number; lamaHari?: number }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function go() {
-    if (!confirm(`Perpanjang "${dueLabel}" jadi 3 hari kerja lagi? (sisa ${renewLeft}× perpanjangan)`)) return;
+    if (!confirm(`Perpanjang "${dueLabel}" jadi ${lamaHari ?? 7} hari kerja lagi? (sisa ${renewLeft}× perpanjangan)`)) return;
     setBusy(true);
     const r = await api<{ dueLabel?: string; renewLeft?: number }>(`/api/loans/${loanId}/renew`, "POST", {});
     setBusy(false);

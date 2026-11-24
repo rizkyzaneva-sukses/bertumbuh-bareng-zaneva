@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handler, json } from "@/lib/http";
 import { kabariPemintaWa } from "@/lib/wa-usulan";
+import { kirimPushKeUser, pushTerkonfigurasi } from "@/lib/push/kirim";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,28 @@ const Ubah = z.object({
   kabari: z.boolean().optional(),
 });
 
-/** Ubah status. Kalau DIBELI/DITOLAK, peminta otomatis dikabari lewat WA. */
+const JUDUL_PUSH: Record<string, string> = {
+  DIBELI: "Buku usulanmu sudah ada 📚",
+  DITOLAK: "Usulan bukumu belum bisa diadakan",
+  DIPERTIMBANGKAN: "Usulan bukumu sedang ditinjau",
+};
+
+const ISI_PUSH: Record<string, (judul: string) => string> = {
+  DIBELI: (judul) => `"${judul}" sudah masuk rak perpustakaan. Pinjam sebelum kehabisan.`,
+  DITOLAK: (judul) => `"${judul}" belum bisa kami adakan tahun ini. Boleh usul judul lain.`,
+  DIPERTIMBANGKAN: (judul) => `"${judul}" sedang dipertimbangkan admin. Nanti dikabari lagi.`,
+};
+
+/**
+ * Ubah status. Kalau DIBELI/DITOLAK/DIPERTIMBANGKAN, peminta dikabari lewat WA
+ * **dan** notifikasi app.
+ *
+ * Bos: *"Ketika usulan dibeli dan barang masuk rak, notifnya ke appsnya ke semua
+ * orang atau orang itu aja"* — usulan itu percakapan pribadi antara peminta dan
+ * admin, jadi notifikasi app-nya **hanya ke peminta** (kalau akunnya ada di app).
+ * Pengumuman "buku baru" ke semua orang sudah punya jalurnya sendiri saat admin
+ * menambah buku ke rak (`kabariBukuBaru`), jadi tidak digandakan di sini.
+ */
 export const POST = handler({ admin: true }, async (req) => {
   const { id, status, kabari } = Ubah.parse(await req.json());
   const row = await prisma.bookRequest.update({ where: { id }, data: { status } });
@@ -36,7 +58,25 @@ export const POST = handler({ admin: true }, async (req) => {
   if (kabari !== false && (status === "DIBELI" || status === "DITOLAK" || status === "DIPERTIMBANGKAN")) {
     wa = await kabariPemintaWa(id, status);
   }
-  return json({ ok: true, usulan: row, wa });
+
+  // Notifikasi app ke peminta. Gagal push TIDAK membatalkan perubahan status —
+  // status sudah tersimpan di atas; hanya push-nya yang tidak sampai.
+  let push: { tujuan: number; terkirim: number } | null = null;
+  if (kabari !== false && row.userId && pushTerkonfigurasi() && JUDUL_PUSH[status]) {
+    try {
+      const hasil = await kirimPushKeUser([row.userId], {
+        title: JUDUL_PUSH[status],
+        body: ISI_PUSH[status](row.title),
+        url: "/usulan",
+        tag: `usulan-${row.id}`,
+      });
+      push = { tujuan: hasil.tujuan, terkirim: hasil.terkirim };
+    } catch (e) {
+      console.error("[usulan] push gagal:", String((e as Error).message ?? e).slice(0, 160));
+    }
+  }
+
+  return json({ ok: true, usulan: row, wa, push });
 });
 
 /** Hapus usulan (mis. spam / dobel). */

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { MAX_ACTIVE_LOANS } from "@/lib/loans";
+import { getLoanWorkingDays } from "@/lib/settings";
 import { displayPhone } from "@/lib/phone";
 import { Catalog } from "@/components/Catalog";
 
@@ -9,12 +10,13 @@ export const dynamic = "force-dynamic";
 
 export default async function BukuPage() {
   const user = await requireUser();
-  const [books, active] = await Promise.all([
+  const [books, active, lamaPinjam] = await Promise.all([
     prisma.book.findMany({ orderBy: { title: "asc" } }),
     prisma.loan.findMany({
       where: { returnedAt: null },
       select: { bookId: true, userId: true, user: { select: { name: true, phone: true } } },
     }),
+    getLoanWorkingDays(),
   ]);
   const mine = new Set(active.filter((l) => l.userId === user.id).map((l) => l.bookId));
   const taken = new Map<string, number>();
@@ -31,8 +33,9 @@ export default async function BukuPage() {
   return (
     <>
       <h1>Rak Buku 📚</h1>
-      <p className="muted">Pilih buku, pinjam 3 hari kerja (Ahad tidak dihitung). Maksimal {MAX_ACTIVE_LOANS} buku sekaligus.</p>
+      <p className="muted">Pilih buku, pinjam {lamaPinjam} hari kerja (Ahad tidak dihitung). Maksimal {MAX_ACTIVE_LOANS} buku sekaligus.</p>
       <Catalog
+        lamaHari={lamaPinjam}
         isAdmin={user.role === "ADMIN"}
         slotsFull={mine.size >= MAX_ACTIVE_LOANS}
         books={books.map((b) => ({

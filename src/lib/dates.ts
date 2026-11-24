@@ -3,7 +3,8 @@
 
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 
-export const LOAN_WORKING_DAYS = 3;
+// Lama pinjam BUKAN konstanta lagi: diatur admin di Profil → Aturan pinjam,
+// disimpan di tabel Setting. Lihat `src/lib/settings.ts`.
 
 const HARI = ["Ahad", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const BULAN = [
@@ -45,8 +46,11 @@ export function diffDays(fromKey: string, toKey: string): number {
  * Jatuh tempo = tanggal peminjaman + `workingDays` hari kerja.
  * Hari Ahad TIDAK dihitung (Sabtu dihitung). Hari peminjaman sendiri tidak dihitung.
  * Contoh: Senin -> Kamis, Kamis -> Senin, Jumat -> Selasa, Sabtu -> Rabu, Ahad -> Rabu.
+ *
+ * `workingDays` WAJIB dikirim pemanggil — lama pinjam sekarang diatur admin
+ * (`getLoanWorkingDays()`), bukan angka mati di sini.
  */
-export function computeDueDate(borrowKey: string, workingDays = LOAN_WORKING_DAYS): string {
+export function computeDueDate(borrowKey: string, workingDays: number): string {
   let key = borrowKey;
   let counted = 0;
   while (counted < workingDays) {

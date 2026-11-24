@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { displayPhone } from "@/lib/phone";
 import { myHistory, daysFromToday } from "@/lib/reading";
+import { getLoanWorkingDays } from "@/lib/settings";
 import { formatTanggalPendek } from "@/lib/dates";
 import { DueText, StatusChip } from "@/components/ui";
 import { ReturnLoanButton } from "@/components/LoanActions";
@@ -30,7 +31,7 @@ export default async function RiwayatPage({ searchParams }: { searchParams: Prom
   const user = await requireUser();
   const { f: raw } = await searchParams;
   const f: FilterKey = (FILTERS.some((x) => x.key === raw) ? raw : "semua") as FilterKey;
-  const h = await myHistory(user.id);
+  const [h, lamaPinjam] = await Promise.all([myHistory(user.id), getLoanWorkingDays()]);
 
   // Buku di tangan, dipisah menurut progresnya.
   const dipinjam = h.reading;
@@ -170,7 +171,7 @@ export default async function RiwayatPage({ searchParams }: { searchParams: Prom
                   />
 
                   <div className="row" style={{ marginTop: 10, gap: 8 }}>
-                    <RenewButton loanId={b.loanId} dueLabel={formatTanggalPendek(b.dueKey)} renewLeft={b.renewLeft} />
+                    <RenewButton loanId={b.loanId} dueLabel={formatTanggalPendek(b.dueKey)} renewLeft={b.renewLeft} lamaHari={lamaPinjam} />
                     <ReturnLoanButton loanId={b.loanId} title={b.title} />
                   </div>
                 </div>

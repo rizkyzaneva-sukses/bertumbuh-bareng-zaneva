@@ -3,6 +3,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { prisma } from "@/lib/db";
 import { seedAdmins, seedBooks } from "@/lib/seed";
 import { dateFromKey, dayOfWeek, jakartaKey } from "@/lib/dates";
+import { setLoanWorkingDays } from "@/lib/settings";
 import { resetDb, startMockWaha } from "./helpers";
 
 const PORT = 3101;
@@ -44,6 +45,9 @@ beforeAll(async () => {
   await resetDb();
   await seedAdmins();
   await seedBooks();
+  // Tes ini ditulis untuk aturan 3 hari kerja (termasuk ekspektasi tanggal
+  // pengingat). Patok di sini supaya default 7 hari tidak menggeser tanggal.
+  await setLoanWorkingDays(3);
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", String(PORT)], {
     env: { ...process.env, PORT: String(PORT), DISABLE_SCHEDULER: "1", NODE_ENV: "production" },
     stdio: "pipe",
@@ -101,7 +105,7 @@ describe("alur end-to-end lewat HTTP", () => {
     expect((await admin.api("/api/auth/change-password", "POST", { newPassword: DEFAULT_PW })).body.code).toBe("SAME");
     expect((await admin.api("/api/auth/change-password", "POST", { newPassword: "RahasiaBaru99" })).status).toBe(200);
     expect((await admin.html("/")).text).not.toContain("force-password-modal");
-    expect((await admin.api("/api/books", "GET")).body.books).toHaveLength(37);
+    expect((await admin.api("/api/books", "GET")).body.books.length).toBeGreaterThanOrEqual(37);
     // password lama tidak berlaku lagi
     expect((await new Client().login("081220210193", DEFAULT_PW)).status).toBe(401);
     expect((await new Client().login("081220210193", "RahasiaBaru99")).status).toBe(200);
@@ -243,10 +247,12 @@ describe("alur end-to-end lewat HTTP", () => {
     expect((await admin.api(`/api/loans/${loan2.id}/return`)).status).toBe(200);
     expect((await prisma.loan.findUniqueOrThrow({ where: { id: loan2.id } })).returnedVia).toBe("ADMIN");
     // admin hapus
+    const sebelumHapus = await prisma.book.count();
     expect((await sinta.api(`/api/books/${ids.b2}`, "DELETE")).status).toBe(403);
     expect((await admin.api(`/api/books/${ids.b2}`, "DELETE")).status).toBe(200);
     expect(await prisma.book.count({ where: { id: ids.b2 } })).toBe(0);
-    expect(await prisma.book.count()).toBe(36);
+    // Katalog bisa bertambah dari waktu ke waktu, jadi hitung relatif — bukan 36 mati.
+    expect(await prisma.book.count()).toBe(sebelumHapus - 1);
     expect((await sinta.html("/buku")).text).not.toContain("Deep Work");
     // tambah & edit
     const add = await admin.api("/api/books", "POST", { title: "Buku Baru", author: "Penulis", pages: 250, category: "Tes", synopsis: "Isi.", stock: 2 });
@@ -280,7 +286,7 @@ describe("alur end-to-end lewat HTTP", () => {
     const rows = [...r.text.matchAll(/data-testid="rank-row"[^>]*>(.*?)<\/li>/g)].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
     expect(rows).toEqual(["1 Sinta Dewi (kamu) 1 buku"]);
     const stat = (label: string) => r.text.match(new RegExp(`<b>(\\d+)</b><span>${label}</span>`))?.[1];
-    expect(stat("Judul buku")).toBe("37"); // 36 + Buku Baru
+    expect(Number(stat("Judul buku"))).toBeGreaterThanOrEqual(37); // katalog + Buku Baru
     expect(stat("Sedang dipinjam")).toBe("0");
     expect(stat("Beres dibaca")).toBe("1");
     expect(stat("Terlambat")).toBe("0");

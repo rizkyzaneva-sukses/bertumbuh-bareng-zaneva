@@ -31,26 +31,53 @@ export function AdminRequests({ awal }: { awal: Usulan[] }) {
   const router = useRouter();
   const [rows, setRows] = useState<Usulan[]>(awal);
   const [sibuk, setSibuk] = useState("");
-  const [pesan, setPesan] = useState("");
+  const [pesan, setPesan] = useState<{ ok: boolean; t: string } | null>(null);
 
   async function ubah(id: string, status: string) {
     setSibuk(id);
-    setPesan("");
-    const r = await api<{ wa?: { terkirim: boolean; alasan?: string; ke?: string } }>("/api/admin/requests", "POST", {
-      id,
-      status,
-      kabari: true,
-    });
+    setPesan(null);
+    const r = await api<{
+      wa?: { terkirim: boolean; alasan?: string; ke?: string };
+      push?: { tujuan: number; terkirim: number } | null;
+    }>("/api/admin/requests", "POST", { id, status, kabari: true });
     setSibuk("");
-    if (!r.ok) return setPesan(r.error ?? "Gagal mengubah status.");
+    if (!r.ok) return setPesan({ ok: false, t: r.error ?? "Gagal mengubah status." });
     setRows((l) => l.map((x) => (x.id === id ? { ...x, status } : x)));
+
+    // Kabar ke peminta: WA dan notifikasi app dilaporkan terpisah, karena
+    // salah satunya bisa gagal tanpa membatalkan yang lain.
+    const bagian: string[] = ["Status diperbarui"];
+    let gagal = false;
     if (r.wa) {
-      setPesan(
-        r.wa.terkirim
-          ? `Status diperbarui & WA terkirim ke ${r.wa.ke ?? "peminta"} ✅`
-          : `Status diperbarui, tapi WA gagal: ${r.wa.alasan ?? "tidak diketahui"}`,
-      );
-    } else setPesan("Status diperbarui.");
+      if (r.wa.terkirim) bagian.push(`WA terkirim ke ${r.wa.ke ?? "peminta"}`);
+      else {
+        gagal = true;
+        bagian.push(`WA gagal (${r.wa.alasan ?? "tidak diketahui"})`);
+      }
+    }
+    if (r.push) {
+      if (r.push.terkirim > 0) bagian.push(`notifikasi app terkirim`);
+      else if (r.push.tujuan === 0) bagian.push("peminta belum menyalakan notifikasi app");
+      else {
+        gagal = true;
+        bagian.push("notifikasi app gagal");
+      }
+    } else if (status === "DIBELI" || status === "DITOLAK" || status === "DIPERTIMBANGKAN") {
+      bagian.push("peminta tidak punya akun app, jadi hanya WA");
+    }
+    setPesan({ ok: !gagal, t: `${bagian.join(" · ")} ${gagal ? "⚠️" : "✅"}` });
+    router.refresh();
+  }
+
+  async function hapus(u: Usulan) {
+    if (!confirm(`Hapus usulan "${u.title}"? Tidak bisa dibatalkan.`)) return;
+    setSibuk(u.id);
+    setPesan(null);
+    const r = await api("/api/admin/requests?id=" + encodeURIComponent(u.id), "DELETE");
+    setSibuk("");
+    if (!r.ok) return setPesan({ ok: false, t: r.error ?? "Gagal menghapus." });
+    setRows((l) => l.filter((x) => x.id !== u.id));
+    setPesan({ ok: true, t: `Usulan "${u.title}" dihapus.` });
     router.refresh();
   }
 
@@ -58,7 +85,11 @@ export function AdminRequests({ awal }: { awal: Usulan[] }) {
 
   return (
     <>
-      {pesan && <div className={pesan.includes("✅") ? "ok" : "err"} style={{ marginBottom: 10 }}>{pesan}</div>}
+      {pesan && (
+        <div className={pesan.ok ? "ok" : "err"} role="status" style={{ marginBottom: 10 }}>
+          {pesan.t}
+        </div>
+      )}
       {rows.map((u) => {
         const s = LABEL[u.status] ?? LABEL.BARU;
         return (
@@ -91,6 +122,15 @@ export function AdminRequests({ awal }: { awal: Usulan[] }) {
                   Tandai baru
                 </button>
               )}
+              <button
+                className="btn sm ghost"
+                disabled={sibuk === u.id}
+                onClick={() => hapus(u)}
+                data-testid="hapus-usulan"
+                style={{ marginLeft: "auto", color: "var(--red, #d33)" }}
+              >
+                Hapus
+              </button>
             </div>
           </div>
         );

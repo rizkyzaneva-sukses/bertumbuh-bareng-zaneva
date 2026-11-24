@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { borrowBook, returnLoan } from "@/lib/loans";
 import { runReminderJob, adminLateText } from "@/lib/reminders";
 import { CONDITIONS, CONDITION_LABEL, conditionChip, isCondition, isUnusable, stockLoss } from "@/lib/conditions";
+import { setLoanWorkingDays } from "@/lib/settings";
 import { startMockWaha, resetDb } from "./helpers";
 
 let waha: Awaited<ReturnType<typeof startMockWaha>>;
@@ -12,6 +13,10 @@ beforeEach(async () => {
   await resetDb();
   waha.calls.length = 0;
   waha.state.failNext = 0;
+  // Matematika tanggal pengingat di berkas ini ditulis untuk aturan 3 hari
+  // kerja (mekanisme lama). Aturannya dipatok di sini supaya tes menguji
+  // perilaku pengingat, bukan ikut berubah tiap kebijakan lama pinjam berubah.
+  await setLoanWorkingDays(3);
 });
 afterEach(async () => {
   await waha.close();

@@ -8,6 +8,7 @@ import { BookCover } from "@/components/BookCover";
 import { BorrowButton } from "@/components/LoanActions";
 import { ProgressBar } from "@/components/ReadingControls";
 import { formatTanggal, keyFromDbDate } from "@/lib/dates";
+import { getLoanWorkingDays } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function DetailBukuPage({ params }: { params: Promise<{ id:
   const book = await prisma.book.findUnique({ where: { id } });
   if (!book) notFound();
 
-  const [active, myLoans, myProgress] = await Promise.all([
+  const [active, myLoans, myProgress, lamaPinjam] = await Promise.all([
     prisma.loan.findMany({
       where: { bookId: id, returnedAt: null },
       select: { dueDate: true, user: { select: { name: true, phone: true } } },
@@ -40,6 +41,7 @@ export default async function DetailBukuPage({ params }: { params: Promise<{ id:
       where: { userId_bookId: { userId: user.id, bookId: id } },
       select: { lastPage: true, totalPages: true, status: true, finishedAt: true },
     }),
+    getLoanWorkingDays(),
   ]);
 
   const taken = active.length;
@@ -86,6 +88,7 @@ export default async function DetailBukuPage({ params }: { params: Promise<{ id:
           <BorrowButton
             bookId={book.id}
             title={book.title}
+            lamaHari={lamaPinjam}
             disabled={mine || available < 1 || slotsFull}
             label={mine ? "Sedang dipinjam" : available < 1 ? "Habis" : "Pinjam buku ini"}
           />
@@ -134,7 +137,7 @@ export default async function DetailBukuPage({ params }: { params: Promise<{ id:
       </div>
 
       <p className="muted" style={{ fontSize: ".78rem", marginTop: 14 }}>
-        Pinjam 3 hari kerja (Ahad tidak dihitung) · stok {book.stock} eksemplar
+        Pinjam {lamaPinjam} hari kerja (Ahad tidak dihitung) · stok {book.stock} eksemplar
       </p>
     </>
   );

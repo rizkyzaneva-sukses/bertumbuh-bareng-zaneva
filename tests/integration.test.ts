@@ -8,6 +8,7 @@ import { markFinished, renewLoan, saveProgress, RENEW_LIMIT } from "@/lib/readin
 import { afterReturnText, ackFinishText, ackUnfinishedText, parseAnswer, pollPromptReplies, deliverPendingPrompts } from "@/lib/wa-prompts";
 import { seedAdmins, seedBooks, seedBooksOnce } from "@/lib/seed";
 import { keyFromDbDate } from "@/lib/dates";
+import { setLoanWorkingDays, LOAN_WORKING_DAYS_DEFAULT } from "@/lib/settings";
 import { startMockWaha, resetDb } from "./helpers";
 
 let waha: Awaited<ReturnType<typeof startMockWaha>>;
@@ -32,16 +33,25 @@ beforeEach(async () => {
   await resetDb();
   waha.calls.length = 0;
   waha.state.failNext = 0;
+  // Sebagian besar tes di berkas ini ditulis untuk aturan lama 3 hari kerja
+  // (matematika tanggal pengingat ikut bergeser kalau lamanya beda). Jadi
+  // aturannya DIPATOK ke 3 di sini, bukan mengandalkan default. Perilaku
+  // default 7 hari & perubahan setting diuji di blok "aturan lama pinjam".
+  await setLoanWorkingDays(3);
 });
 
 describe("seed", () => {
-  it("admin awal & katalog 37 buku, tanpa halaman karangan", async () => {
+  it("admin awal & katalog terisi sekali, tanpa halaman karangan", async () => {
     await seedAdmins();
     const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, orderBy: { phone: "asc" } });
     expect(admins.map((a) => a.phone)).toEqual(["6281220210193", "6285177555437"]);
     expect(admins.every((a) => a.mustChangePassword && a.tempPassword === "Zaneva2026")).toBe(true);
-    expect(await seedBooksOnce()).toBe(37);
-    expect(await prisma.book.count()).toBe(37);
+    // Jumlah katalog bertambah seiring waktu (buku baru ditambahkan ke seed),
+    // jadi periksa perilakunya, bukan angka 37 yang mati: semua buku masuk
+    // SEKALI, dan tidak ada halaman yang dikarang.
+    const diSeed = await seedBooksOnce();
+    expect(diSeed).toBeGreaterThanOrEqual(37);
+    expect(await prisma.book.count()).toBe(diSeed);
     expect(await prisma.book.count({ where: { pages: { not: null } } })).toBe(0);
     const ah = await prisma.book.findFirstOrThrow({ where: { title: "Atomic Habits" } });
     expect(ah.synopsis).toContain("kebiasaan belajar 10 menit");
@@ -711,5 +721,54 @@ describe("pertanyaan beres-baca via WA", () => {
     expect(r.answered).toBe(0);
     const p = await prisma.readingProgress.findFirst({ where: { userId: u.id, bookId: b.id } });
     expect(p).toBeNull();
+  });
+});
+
+describe("aturan lama pinjam (bisa diubah admin)", () => {
+  it("default 7 hari kerja kalau setting belum pernah disimpan", async () => {
+    // beforeEach menyetel 3; hapus supaya benar-benar menguji default.
+    await prisma.setting.deleteMany({ where: { key: "loan_working_days" } });
+    const { u, b } = await mk();
+    const loan = await borrowBook(u.id, b.id, wib("2026-11-16", "09:00")); // Senin
+    // 7 hari kerja: 17,18,19,20,21 (5) · Ahad 22 dilewati · 23,24 (7)
+    expect(keyFromDbDate(loan.dueDate)).toBe("2026-11-24");
+  });
+
+  it("admin ubah jadi 14 hari: peminjaman berikutnya ikut 14", async () => {
+    await setLoanWorkingDays(14);
+    const { u, b } = await mk();
+    const loan = await borrowBook(u.id, b.id, wib("2026-11-16", "09:00")); // Senin
+    // 14 hari kerja dari Senin 16 Nov: 17-21 (5), Ahad 22 lewat, 23-28 (11),
+    // Ahad 29 lewat, 30 Nov (12), 1 Des (13), 2 Des (14).
+    expect(keyFromDbDate(loan.dueDate)).toBe("2026-12-02");
+  });
+
+  it("pinjaman yang SEDANG berjalan tidak ikut berubah saat setting diubah", async () => {
+    await setLoanWorkingDays(7);
+    const { u, b } = await mk();
+    const loan = await borrowBook(u.id, b.id, wib("2026-11-16", "09:00"));
+    const tempoAwal = keyFromDbDate(loan.dueDate);
+    expect(tempoAwal).toBe("2026-11-24");
+
+    await setLoanWorkingDays(21);
+    const sesudah = await prisma.loan.findUniqueOrThrow({ where: { id: loan.id } });
+    // Tanggal yang sudah dijanjikan ke peminjam TIDAK digeser.
+    expect(keyFromDbDate(sesudah.dueDate)).toBe(tempoAwal);
+  });
+
+  it("perpanjangan memakai lama pinjam yang berlaku, bukan angka mati", async () => {
+    await setLoanWorkingDays(7);
+    const { u, b } = await mk();
+    const loan = await borrowBook(u.id, b.id, wib("2026-11-16", "09:00")); // tempo 24 Nov
+    const r = await renewLoan(loan.id, u.id, wib("2026-11-16", "10:00"));
+    // 24 Nov (Selasa) + 7 hari kerja: 25,26,27,28 (4) · Ahad 29 lewat · 30 Nov (5), 1 Des (6), 2 Des (7)
+    expect(r.newDue).toBe("2026-12-02");
+  });
+
+  it("batas 1–30 dijaga; nilai aneh tidak merusak aturan", async () => {
+    expect(await setLoanWorkingDays(999)).toBe(30);
+    expect(await setLoanWorkingDays(0)).toBe(1);
+    expect(await setLoanWorkingDays(-4)).toBe(1);
+    expect(await setLoanWorkingDays(LOAN_WORKING_DAYS_DEFAULT)).toBe(7);
   });
 });

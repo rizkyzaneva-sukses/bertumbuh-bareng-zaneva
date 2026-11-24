@@ -2,13 +2,11 @@ import { prisma } from "./db";
 import { AppError } from "./errors";
 import { MAX_ACTIVE_LOANS, effectiveStatus } from "./loan-status";
 import { addDays, dateFromKey, jakartaKey, keyFromDbDate, computeDueDate } from "./dates";
+import { getLoanWorkingDays } from "./settings";
 import type { ReadingStatus } from "../generated/prisma/client";
 
 /** Berapa kali satu pinjaman boleh diperpanjang. */
 export const RENEW_LIMIT = 2;
-
-/** Satu perpanjangan = tambah 3 hari kerja (Ahad tidak dihitung). */
-export const RENEW_DAYS = 3;
 
 export type ProgressView = {
   bookId: string;
@@ -107,8 +105,13 @@ export async function markFinished(userId: string, bookId: string, done = true, 
  * batas perpanjangan belum habis dan bukunya tidak diantre orang lain,
  * jatuh tempo digeser. Kalau ada yang mengantre, perpanjangan ditolak —
  * adil untuk yang menunggu, dan pesannya menjelaskan jalan keluarnya.
+ *
+ * Satu perpanjangan = tambah sebanyak lama pinjam yang sedang berlaku
+ * (setting admin), bukan angka tetap — supaya kalau kebijakan berubah jadi
+ * 7 hari, perpanjangan pun ikut 7 hari.
  */
 export async function renewLoan(loanId: string, userId: string, now = new Date()) {
+  const renewDays = await getLoanWorkingDays();
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Loan" WHERE id = ${loanId} FOR UPDATE`;
     const loan = await tx.loan.findUnique({ where: { id: loanId }, include: { book: true } });
@@ -135,7 +138,7 @@ export async function renewLoan(loanId: string, userId: string, now = new Date()
     // yang dilakukan lebih awal tidak menghanguskan sisa harinya.
     const oldDue = keyFromDbDate(loan.dueDate);
     const from = oldDue > jakartaKey(now) ? oldDue : jakartaKey(now);
-    const newDue = computeDueDate(from, RENEW_DAYS);
+    const newDue = computeDueDate(from, renewDays);
     const updated = await tx.loan.update({
       where: { id: loan.id },
       data: { dueDate: dateFromKey(newDue), renewCount: { increment: 1 }, status: "DIPINJAM" },
@@ -236,7 +239,7 @@ export async function otherBorrowers(bookIds: string[], userId: string) {
   return new Map(rows.map((r) => [r.bookId, r._count._all]));
 }
 
-/** Daftar tanggal untuk menampilkan "3 hari lagi" tanpa math tanggal di UI. */
+/** Daftar tanggal untuk menampilkan "N hari lagi" tanpa math tanggal di UI. */
 export const daysFromToday = (key: string, todayKey = jakartaKey(new Date())) => {
   const diff = Math.round(
     (new Date(key + "T00:00:00Z").getTime() - new Date(todayKey + "T00:00:00Z").getTime()) / 86400000,
