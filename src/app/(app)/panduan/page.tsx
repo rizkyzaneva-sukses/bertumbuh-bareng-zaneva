@@ -186,6 +186,16 @@ export default async function PanduanPage() {
           Tanya admin lewat WhatsApp. Sebutkan judul bukunya biar cepat ditelusuri.
         </p>
       </div>
+
+      <h2>Bawa panduannya offline</h2>
+      <div className="card">
+        <p className="muted small" style={{ marginTop: 0 }}>
+          Versi PDF bergambar — bisa dibuka tanpa internet, cocok dikirim ke teman yang baru gabung.
+        </p>
+        <a className="btn sm" href="/panduan.pdf" download data-testid="unduh-panduan">
+          ⬇️ Unduh panduan (PDF)
+        </a>
+      </div>
     </>
   );
 }
