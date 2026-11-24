@@ -10,13 +10,14 @@ export function Nav({ isAdmin, variant }: { isAdmin: boolean; variant: "top" | "
     { href: "/", label: "Beranda", icon: "🏠" },
     { href: "/buku", label: "Buku", icon: "📚" },
     { href: "/riwayat", label: "Riwayat", icon: "📖" },
-    { href: "/usulan", label: "Usulan", icon: "💡" },
-    { href: "/notifikasi", label: "Notif", icon: "🔔" },
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
     { href: "/panduan", label: "Panduan", icon: "📘" },
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: "🛠️" }] : []),
     { href: "/profil", label: "Profil", icon: "👤" },
   ];
+  // Usulan & Notifikasi sengaja TIDAK di sini: 9 item = 576px di HP 390px,
+  // jadi menu terakhir tidak terjangkau (bottom nav tidak bisa digeser).
+  // Keduanya masuk dari halaman Profil supaya navigasi tetap pas 7 item.
   const on = (h: string) => (h === "/" ? path === "/" : path === h || path.startsWith(h + "/"));
   return (
     <nav className={variant === "top" ? "desknav" : "bottomnav"} aria-label="Menu utama">

@@ -130,19 +130,50 @@ export default async function PanduanPage() {
         </p>
       </div>
 
+      <h2>7. Usulkan buku &amp; notifikasi</h2>
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Usul lewat WhatsApp</h3>
+        <p className="muted small" style={{ margin: "0 0 8px" }}>
+          Kirim ke nomor <b>Zaneva Official</b> dengan awalan <code>#usul</code>:
+        </p>
+        <pre style={{ background: "var(--bg2)", padding: 10, borderRadius: 10, fontSize: ".82rem", overflowX: "auto", margin: 0 }}>
+{`#usul Atomic Habits
+#usul Atomic Habits https://shopee.co.id/...`}
+        </pre>
+        <p className="muted small" style={{ margin: "8px 0 0" }}>
+          Judul saja cukup. Link toko boleh ditambahkan di belakangnya — membantu admin cek harga &amp; edisi.
+          Bot akan membalas bahwa usulanmu tercatat, dan kamu dikabari lagi kalau bukunya sudah masuk rak.
+        </p>
+
+        <h3>Usul dari dalam app</h3>
+        <p className="muted small" style={{ margin: 0 }}>
+          Buka <b>Profil</b> → <b>💡 Usulkan buku</b>. Riwayat usulanmu terlihat di situ beserta statusnya
+          (Baru / Dipertimbangkan / Sudah dibeli).
+        </p>
+
+        <h3>Notifikasi buku baru</h3>
+        <p className="muted small" style={{ margin: 0 }}>
+          Buka <b>Profil</b> → <b>🔔 Notifikasi</b> → <b>Aktifkan notifikasi</b> → <b>Izinkan</b>.
+          Setelah aktif, kamu dapat kabar di HP setiap ada buku baru — gratis, tanpa WA.
+          <br />
+          <b>iPhone:</b> wajib dipasang dulu lewat Safari → Bagikan → <b>Tambah ke Layar Utama</b> (iOS 16.4+).
+        </p>
+      </div>
+
       {isAdmin && (
         <>
-          <h2>7. Khusus admin</h2>
+          <h2>8. Khusus admin</h2>
           <div className="card">
             <ul className="list">
-              <li><b>Tambah buku</b> — menu Admin → Buku. Kategori <b>wajib dipilih dari daftar</b>, jangan diketik bebas, supaya rak tidak pecah jadi puluhan label.</li>
+              <li><b>Tambah buku</b> — menu Admin → Buku. Kategori <b>wajib dipilih dari daftar</b>, jangan diketik bebas, supaya rak tidak pecah jadi puluhan label. Setiap buku baru otomatis memicu <b>notifikasi ke semua anggota</b>.</li>
+              <li><b>Rekap usulan buku</b> — Admin → <b>Usulan Buku</b>. Tekan <b>Sudah dibeli</b>, peminta otomatis dikabari lewat WA.</li>
               <li><b>Tambah anggota/admin</b> — Admin → Pengguna → form <b>Tambah pengguna</b>. Password sementara diberikan sistem, kirimkan ke orangnya.</li>
               <li><b>Catat kondisi buku</b> — saat menandai dikembalikan, pilih <i>Baik / Rusak ringan / Rusak berat / Hilang</i>. Hanya <b>Hilang</b> yang mengurangi stok; anggota tidak bisa mencatat rusak/hilang, itu khusus admin.</li>
               <li><b>Pantau keterlambatan</b> — Admin → Pinjaman. Rekap harian juga dikirim ke WA admin sekali sehari.</li>
               <li><b>Halaman panduan ini</b> hanya butuh login, tidak perlu admin.</li>
             </ul>
             <p className="small muted" style={{ marginTop: 10, marginBottom: 0 }}>
-              Catatan: pertanyaan WA &ldquo;beres bacanya?&rdquo; dibaca lewat <b>polling</b> ke sesi WAHA, bukan webhook —
+              Catatan: pertanyaan WA &ldquo;beres bacanya?&rdquo; dan usulan <code>#usul</code> dibaca lewat <b>polling</b> ke sesi WAHA, bukan webhook —
               sesi <code>tehayu</code> sudah dipakai alur order gudang lewat n8n, jadi konfigurasinya sengaja tidak diubah.
             </p>
           </div>
