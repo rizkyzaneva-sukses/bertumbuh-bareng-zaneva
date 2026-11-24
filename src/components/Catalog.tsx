@@ -105,16 +105,22 @@ function Tile({ b, slotsFull, isAdmin }: { b: CatalogBook; slotsFull: boolean; i
   const out = b.available < 1;
   return (
     <article className="tile" data-testid="book-card">
-      <div className="tile-cover">
-        <BookCover book={b} size="md" />
-        {b.mine && <span className="tile-mine">Dipinjam kamu</span>}
-        {!b.mine && out && (
-          <div className="tile-out">
-            <span>Semua dipinjam</span>
-          </div>
-        )}
-      </div>
-      <h3 className="tile-title" title={b.title}>{b.title}</h3>
+      {/* Sampul + judul = tautan ke detail. Sebelumnya kartu mati: Bos
+          *"ga bisa klik untuk lihat detail bukunya"*. Yang dibungkus tautan
+          hanya sampul & judul — tombol Pinjam/Edit tetap tombol terpisah
+          supaya tidak ada tautan bersarang di dalam tautan. */}
+      <Link href={`/buku/${b.id}`} className="tile-link" aria-label={`Lihat detail ${b.title}`}>
+        <div className="tile-cover">
+          <BookCover book={b} size="md" />
+          {b.mine && <span className="tile-mine">Dipinjam kamu</span>}
+          {!b.mine && out && (
+            <div className="tile-out">
+              <span>Semua dipinjam</span>
+            </div>
+          )}
+        </div>
+        <h3 className="tile-title" title={b.title}>{b.title}</h3>
+      </Link>
       <div className="tile-author">
         {b.author}
         {b.pages ? ` · ${b.pages} hlm` : ""}
