@@ -320,6 +320,7 @@ input:focus, textarea:focus, select:focus, .btn:focus-visible, a:focus-visible, 
 .hero-body .btn { margin-top: 2px; }
 .mini-list { display: flex; gap: 10px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: thin; }
 .mini { width: 84px; flex: none; }
+.mini .cover { width: 84px; }
 .mini .tile-title { font-size: .78rem; -webkit-line-clamp: 2; }
 .list { list-style: none; padding: 0; margin: 0; }
 .list li { padding: 10px 0; border-bottom: 1px dashed var(--border); }

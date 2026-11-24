@@ -13,7 +13,7 @@ export default async function NotifikasiPage() {
     <>
       <h1>Notifikasi 🔔</h1>
       <p className="muted">
-        Dapat kabar saat ada <b>buku baru</b> dan saat buku pinjamanmu hampir jatuh tempo. Gratis, tanpa WA.
+        Dapat kabar saat ada <b>buku baru</b>, dan saat buku pinjamanmu <b>jatuh tempo atau telat</b> — di jam yang sama dengan pengingat WhatsApp (08.00–20.00 WIB, selain Ahad). Gratis.
       </p>
 
       <div className="card">

@@ -9,14 +9,20 @@ import { DueText, StatusChip } from "@/components/ui";
 import { ReturnLoanButton } from "@/components/LoanActions";
 import { ReadingControls, RenewButton, ProgressBar } from "@/components/ReadingControls";
 import { BookCover } from "@/components/BookCover";
+import { addDays, jakartaKey } from "@/lib/dates";
+
+/** Buku dianggap "baru" selama 7 hari sejak masuk rak. */
+const BARU_HARI = 7;
 
 export default async function Beranda() {
   const user = await requireUser();
-  const [loans, dash, prog, lanjut] = await Promise.all([
+  const baruSejak = new Date(addDays(jakartaKey(new Date()), -(BARU_HARI - 1)) + "T00:00:00Z");
+  const [loans, dash, prog, lanjut, baru] = await Promise.all([
     prisma.loan.findMany({ where: { userId: user.id }, include: { book: true }, orderBy: { borrowedAt: "desc" } }),
     getDashboard(),
     progressMap(user.id),
     unfinishedFor(user.id),
+    prisma.book.findMany({ where: { createdAt: { gte: baruSejak } }, orderBy: { createdAt: "desc" }, take: 12 }),
   ]);
   const active = loans.filter((l) => !l.returnedAt);
   const done = loans.filter((l) => l.returnedAt);
@@ -49,6 +55,24 @@ export default async function Beranda() {
             <Link className="btn sm soft" href="/riwayat">Lanjut</Link>
           </div>
         </div>
+      )}
+
+      {baru.length > 0 && (
+        <>
+          <div className="row between" style={{ marginTop: 4 }}>
+            <h2 style={{ margin: 0 }}>Baru masuk rak</h2>
+            <Link href="/buku" className="small">Semua buku</Link>
+          </div>
+          <p className="shelf-hint">Masuk dalam 7 hari terakhir. Setelah itu pindah ke rak biasa.</p>
+          <div className="mini-list" data-testid="buku-baru">
+            {baru.map((b) => (
+              <Link key={b.id} href={`/buku/${b.id}`} className="mini" style={{ color: "inherit", textDecoration: "none" }}>
+                <BookCover book={b} size="sm" />
+                <div className="tile-title">{b.title}</div>
+              </Link>
+            ))}
+          </div>
+        </>
       )}
 
       <h2>Pinjaman saya</h2>

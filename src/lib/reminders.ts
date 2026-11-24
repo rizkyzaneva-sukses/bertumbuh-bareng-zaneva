@@ -6,6 +6,7 @@ import { wahaSendText, type SendText } from "./waha";
 import { displayPhone } from "./phone";
 import { deliverPendingPrompts, pollPromptReplies } from "./wa-prompts";
 import { pollUsulanWa } from "./wa-usulan";
+import { kirimPushKeUser, pushTerkonfigurasi } from "./push/kirim";
 import type { ReminderKind } from "../generated/prisma/client";
 
 /** Jam kirim pengingat (WIB). Job boleh jalan kapan saja; mengirim hanya di jendela ini. */
@@ -163,6 +164,21 @@ export async function runReminderJob(opts: JobOptions = {}): Promise<JobResult> 
         const stored = kind === "FIRST_LINK" ? text.replace(/\S*\/kembali\/\S+/, "[link pengembalian]") : text;
         await prisma.reminderLog.update({ where: { id: logId }, data: { status: "SENT", message: stored } });
         result.sent++;
+        // Notifikasi app menyusul WA, bukan menggantikannya. Hanya sampai ke HP
+        // yang sudah menyalakan notifikasi. Kegagalan push tidak mengubah
+        // status WA di atas (itu yang dihitung `result.sent`).
+        if (pushTerkonfigurasi()) {
+          const telat = Math.max(0, diffDays(dueKey, today));
+          kirimPushKeUser([loan.userId], {
+            title: telat > 0 ? "Buku belum kembali" : "Buku jatuh tempo hari ini",
+            body:
+              telat > 0
+                ? `"${loan.book.title}" telat ${telat} hari. Perpanjang di Riwayat, atau balikin.`
+                : `"${loan.book.title}" jatuh tempo hari ini. Balikin atau perpanjang ya.`,
+            url: "/riwayat",
+            tag: `tempo-${loan.id}`,
+          }).catch((e) => console.error("[pengingat] push gagal:", String((e as Error).message ?? e).slice(0, 160)));
+        }
       } catch (e) {
         await prisma.reminderLog.update({
           where: { id: logId },

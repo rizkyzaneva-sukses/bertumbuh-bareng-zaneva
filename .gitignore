@@ -10,3 +10,6 @@ test-results
 
 # helper diagnostik lokal (encoding DB test)
 scripts/fix_testdb_encoding.mjs
+
+pnpm-lock.yaml
+pnpm-workspace.yaml
