@@ -28,8 +28,8 @@ export default async function Beranda() {
       <p className="muted">Yuk bertumbuh bareng. Satu halaman sehari juga jalan.</p>
 
       <div className="grid cols2" style={{ marginBottom: 14 }}>
-        <div className="stat"><b data-testid="slot-used">{active.length}/{MAX_ACTIVE_LOANS}</b><span>Slot pinjam terpakai</span></div>
-        <div className="stat"><b data-testid="my-finished">{finishedBooks}</b><span>Buku selesai kamu baca{me ? ` · peringkat #${me.rank}` : ""}</span></div>
+        <div className="stat"><b data-testid="slot-used">{active.length}/{MAX_ACTIVE_LOANS}</b><span>Slot pinjam</span></div>
+        <div className="stat"><b data-testid="my-finished">{finishedBooks}</b><span>{me ? `Selesai · peringkat #${me.rank}` : "Selesai dibaca"}</span></div>
       </div>
 
       {lanjut.length > 0 && (
@@ -39,15 +39,15 @@ export default async function Beranda() {
             size="sm"
           />
           <div className="hero-body">
-            <b>Lanjutkan bacaanmu 📖</b>
+            <b>Lanjutkan bacaanmu</b>
             <div className="small muted">
               {lanjut[0].book.title} — halaman {lanjut[0].lastPage}
               {lanjut[0].totalPages ? `/${lanjut[0].totalPages}` : ""} ({lanjut[0].percent}%)
               {lanjut.length > 1 ? ` · +${lanjut.length - 1} lainnya` : ""}
             </div>
             <ProgressBar percent={lanjut[0].percent} />
+            <Link className="btn sm soft" href="/riwayat">Lanjut</Link>
           </div>
-          <Link className="btn sm soft" href="/riwayat">Lanjut</Link>
         </div>
       )}
 

@@ -22,22 +22,32 @@ export default async function ProfilPage() {
         <p className="muted" style={{ margin: 0 }}>Nomor HP: {displayPhone(user.phone)} · {user.role === "ADMIN" ? "Admin" : "Anggota"}</p>
       </div>
 
-      {/* Pintasan ke Notifikasi & Usulan — sengaja di sini, bukan di bottom nav,
-          supaya bottom nav tetap 7 item dan tidak meluber di HP kecil. */}
+      {/* Menu sekunder. Bottom nav dibatasi 5 item (Beranda Buku Riwayat
+          Dasbor Profil) karena 7 item membuat tombol ~51px di HP 360px. */}
       <div className="card">
-        <h2>Notifikasi &amp; usulan</h2>
-        <Link href="/notifikasi" className="row between" style={{ textDecoration: "none", color: "inherit", padding: "8px 0" }} data-testid="pintasan-notifikasi">
-          <span>🔔 Notifikasi</span>
+        <h2>Menu</h2>
+        <Link href="/panduan" className="row between menu-link" data-testid="pintasan-panduan">
+          <span>Panduan</span>
+          <span className="muted" style={{ fontSize: ".82rem" }}>cara pinjam &amp; baca ›</span>
+        </Link>
+        <Link href="/notifikasi" className="row between menu-link" data-testid="pintasan-notifikasi">
+          <span>Notifikasi</span>
           <span className="muted" style={{ fontSize: ".82rem" }}>
             {perangkat > 0 ? `aktif · ${perangkat} perangkat` : "belum aktif"} ›
           </span>
         </Link>
-        <Link href="/usulan" className="row between" style={{ textDecoration: "none", color: "inherit", padding: "8px 0" }} data-testid="pintasan-usulan">
-          <span>💡 Usulkan buku</span>
+        <Link href="/usulan" className="row between menu-link" data-testid="pintasan-usulan">
+          <span>Usulkan buku</span>
           <span className="muted" style={{ fontSize: ".82rem" }}>
             {usulan > 0 ? `${usulan} menunggu` : "kirim judul"} ›
           </span>
         </Link>
+        {user.role === "ADMIN" && (
+          <Link href="/admin" className="row between menu-link" data-testid="pintasan-admin">
+            <span>Panel admin</span>
+            <span className="muted" style={{ fontSize: ".82rem" }}>pinjaman, buku, pengguna ›</span>
+          </Link>
+        )}
       </div>
 
       <div className="card">

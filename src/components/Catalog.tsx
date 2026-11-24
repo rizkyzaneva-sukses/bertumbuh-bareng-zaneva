@@ -51,6 +51,7 @@ export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; s
           data-testid="search"
         />
       </div>
+      <div className="tabs-scroll">
       <div className="tabs" role="tablist" aria-label="Filter kategori">
         <button type="button" className={cat === "" ? "on" : ""} onClick={() => setCat("")} style={{ cursor: "pointer" }}>
           Semua
@@ -60,6 +61,7 @@ export function Catalog({ books, slotsFull, isAdmin }: { books: CatalogBook[]; s
             {c}
           </button>
         ))}
+      </div>
       </div>
       <p className="shelf-hint" data-testid="shelf-hint">
         {shown.length} buku

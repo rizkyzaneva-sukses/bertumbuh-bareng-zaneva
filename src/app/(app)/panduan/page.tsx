@@ -153,7 +153,7 @@ export default async function PanduanPage() {
 
         <h3>Notifikasi buku baru</h3>
         <p className="muted small" style={{ margin: 0 }}>
-          Buka <b>Profil</b> → <b>🔔 Notifikasi</b> → <b>Aktifkan notifikasi</b> → <b>Izinkan</b>.
+          Buka <b>Profil</b> → <b>Notifikasi</b> → <b>Aktifkan notifikasi</b> → <b>Izinkan</b>.
           Setelah aktif, kamu dapat kabar di HP setiap ada buku baru — gratis, tanpa WA.
           <br />
           <b>iPhone:</b> wajib dipasang dulu lewat Safari → Bagikan → <b>Tambah ke Layar Utama</b> (iOS 16.4+).
@@ -165,11 +165,11 @@ export default async function PanduanPage() {
           <h2>8. Khusus admin</h2>
           <div className="card">
             <ul className="list">
-              <li><b>Tambah buku</b> — menu Admin → Buku. Kategori <b>wajib dipilih dari daftar</b>, jangan diketik bebas, supaya rak tidak pecah jadi puluhan label. Setiap buku baru otomatis memicu <b>notifikasi ke semua anggota</b>.</li>
-              <li><b>Rekap usulan buku</b> — Admin → <b>Usulan Buku</b>. Tekan <b>Sudah dibeli</b>, peminta otomatis dikabari lewat WA.</li>
-              <li><b>Tambah anggota/admin</b> — Admin → Pengguna → form <b>Tambah pengguna</b>. Password sementara diberikan sistem, kirimkan ke orangnya.</li>
+              <li><b>Tambah buku</b> — Profil → Panel admin → tab <b>Buku</b>. Kategori <b>wajib dipilih dari daftar</b>, jangan diketik bebas, supaya rak tidak pecah jadi puluhan label. Setiap buku baru otomatis memicu <b>notifikasi ke semua anggota</b>.</li>
+              <li><b>Rekap usulan buku</b> — Panel admin → tab <b>Usulan</b>. Tekan <b>Sudah dibeli</b>, peminta otomatis dikabari lewat WA.</li>
+              <li><b>Tambah anggota/admin</b> — Panel admin → tab <b>User</b> → form <b>Tambah pengguna</b>. Password sementara diberikan sistem, kirimkan ke orangnya.</li>
               <li><b>Catat kondisi buku</b> — saat menandai dikembalikan, pilih <i>Baik / Rusak ringan / Rusak berat / Hilang</i>. Hanya <b>Hilang</b> yang mengurangi stok; anggota tidak bisa mencatat rusak/hilang, itu khusus admin.</li>
-              <li><b>Pantau keterlambatan</b> — Admin → Pinjaman. Rekap harian juga dikirim ke WA admin sekali sehari.</li>
+              <li><b>Pantau keterlambatan</b> — Panel admin → tab <b>Pinjam</b>. Rekap harian juga dikirim ke WA admin sekali sehari.</li>
               <li><b>Halaman panduan ini</b> hanya butuh login, tidak perlu admin.</li>
             </ul>
             <p className="small muted" style={{ marginTop: 10, marginBottom: 0 }}>

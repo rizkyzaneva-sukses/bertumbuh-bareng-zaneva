@@ -85,10 +85,10 @@ export function ReadingControls({
         </div>
       ) : (
         <>
-          <div className="row" style={{ gap: 6 }}>
-            <label className="small muted" htmlFor={`pg-${bookId}`} style={{ margin: 0 }}>
-              Terakhir halaman
-            </label>
+          <label className="small muted" htmlFor={`pg-${bookId}`}>
+            Terakhir halaman
+          </label>
+          <div className="row page-entry">
             <input
               id={`pg-${bookId}`}
               inputMode="numeric"
@@ -98,7 +98,6 @@ export function ReadingControls({
               value={page}
               onChange={(e) => setPage(e.target.value)}
               placeholder="0"
-              style={{ width: 90, margin: 0 }}
               data-testid="page-input"
             />
             {totalPages ? <span className="small muted">/ {totalPages}</span> : null}
