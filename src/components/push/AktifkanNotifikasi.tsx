@@ -81,6 +81,33 @@ export function AktifkanNotifikasi({ kompak = false }: { kompak?: boolean }) {
     })();
   }, []);
 
+  /**
+   * Chrome Android memakai "quiet permission UI": kalau prompt izin ditutup
+   * (bukan ditekan Allow/Block), permintaan berikutnya bisa langsung dijawab
+   * "denied" tanpa menampilkan apa pun. Tanpa listener ini user harus reload
+   * manual setelah mengubah izin di setelan situs.
+   */
+  useEffect(() => {
+    let batal = false;
+    let st: PermissionStatus | undefined;
+    try {
+      navigator.permissions
+        ?.query({ name: "notifications" as PermissionName })
+        .then((s) => {
+          if (batal) return;
+          st = s;
+          s.onchange = () => window.location.reload();
+        })
+        .catch(() => {});
+    } catch {
+      /* browser tanpa Permissions API — abaikan */
+    }
+    return () => {
+      batal = true;
+      if (st) st.onchange = null;
+    };
+  }, []);
+
   async function aktifkan() {
     setSibuk(true);
     setPesan("");
@@ -88,8 +115,13 @@ export function AktifkanNotifikasi({ kompak = false }: { kompak?: boolean }) {
       // Izin WAJIB diminta dari gesture klik — kalau dari useEffect, Chrome memblokir.
       const izin = await Notification.requestPermission();
       if (izin !== "granted") {
-        setStatus(izin === "denied" ? "ditolak" : "mati");
-        setPesan("Izin notifikasi belum diberikan.");
+        if (izin === "denied") {
+          setStatus("ditolak");
+          setPesan("Chrome belum mengizinkan. Ubah dulu lewat ikon gembok di address bar → Notifikasi → Izinkan, lalu tekan Muat ulang.");
+        } else {
+          setStatus("mati");
+          setPesan("Izin notifikasi belum diberikan. Coba lagi kapan saja — tombol ini tetap ada.");
+        }
         return;
       }
 
@@ -211,19 +243,23 @@ export function AktifkanNotifikasi({ kompak = false }: { kompak?: boolean }) {
   if (status === "server-belum-siap")
     return <p className="muted" style={{ fontSize: ".85rem" }}>Notifikasi belum disiapkan admin. Hubungi admin ya.</p>;
 
-  if (status === "ditolak")
-    return (
-      <div className="card" style={{ background: "var(--red-soft)" }}>
-        <b>Izin notifikasi diblokir</b>
-        <p className="muted" style={{ fontSize: ".85rem", margin: "6px 0 0" }}>
-          Izin tidak bisa diminta ulang dari dalam app. Buka ikon <b>gembok</b> di sebelah alamat situs → <b>Notifikasi</b> →{" "}
-          <b>Izinkan</b>, lalu muat ulang halaman ini.
-        </p>
-      </div>
-    );
+  // Status "ditolak" SENGAJA tidak lagi memakai early-return: dulu kartu ini
+  // menggantikan seluruh tombol sehingga user yang tidak sengaja menutup prompt
+  // kehilangan tombolnya selamanya. Sekarang kartunya tampil SEBAGAI TAMBAHAN
+  // dan tombol tetap ada sampai notifikasi benar-benar aktif.
+  const diblokir = status === "ditolak";
 
   return (
     <div>
+      {diblokir && (
+        <div className="card" style={{ background: "var(--red-soft)", marginBottom: 10 }}>
+          <b>Izin notifikasi diblokir</b>
+          <p className="muted" style={{ fontSize: ".85rem", margin: "6px 0 0" }}>
+            Buka ikon <b>gembok</b> di sebelah alamat situs → <b>Notifikasi</b> → <b>Izinkan</b>, lalu tekan{" "}
+            <b>Muat ulang</b> di bawah. Tombol di sini tetap bisa dipakai.
+          </p>
+        </div>
+      )}
       {status === "aktif" ? (
         <div className="row">
           <span className="chip green">Notifikasi aktif</span>
@@ -237,11 +273,22 @@ export function AktifkanNotifikasi({ kompak = false }: { kompak?: boolean }) {
         </p>
       )}
 
-      <div className="row" style={{ marginTop: 10 }}>
+      <div className="row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
         {status === "mati" ? (
           <button className="btn sm" disabled={sibuk} onClick={aktifkan} data-testid="aktifkan-push">
             {sibuk ? "…" : "Aktifkan notifikasi"}
           </button>
+        ) : status === "ditolak" ? (
+          <>
+            {/* Tombol TIDAK dihilangkan: setelah user mengizinkan lewat setelan
+                situs, satu klik ini langsung mendaftarkan langganan. */}
+            <button className="btn sm" disabled={sibuk} onClick={aktifkan} data-testid="aktifkan-push">
+              {sibuk ? "…" : "Coba aktifkan lagi"}
+            </button>
+            <button className="btn sm soft" onClick={() => window.location.reload()} data-testid="muat-ulang">
+              Muat ulang halaman
+            </button>
+          </>
         ) : (
           <>
             <button className="btn sm ghost" disabled={sibuk} onClick={matikan} data-testid="matikan-push">
