@@ -13,3 +13,5 @@ scripts/fix_testdb_encoding.mjs
 
 pnpm-lock.yaml
 pnpm-workspace.yaml
+
+.uji-proof-js

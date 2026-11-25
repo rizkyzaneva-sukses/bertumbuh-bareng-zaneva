@@ -13,7 +13,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "localpg": "node scripts/localpg.mjs",
     "test:ui": "node scripts/ui-check.mjs",
-    "seed:books": "tsx prisma/seed.ts --books"
+    "seed:books": "tsx prisma/seed.ts --books",
+    "uji:kompres": "node scripts/uji-kompres-bukti.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
