@@ -60,6 +60,24 @@ export function computeDueDate(borrowKey: string, workingDays: number): string {
   return key;
 }
 
+/**
+ * Jatuh tempo untuk peminjaman BARU, dengan jangkar tanggal launch.
+ *
+ * `anchor` = tanggal launch (YYYY-MM-DD) atau null. Bila null, aturan biasa dipakai.
+ *
+ * Bila diisi, pinjaman pada atau SEBELUM `anchor` diperlakukan seolah dibuat sehari
+ * sebelum tanggal itu, sehingga **hari pertama yang dihitung = tanggal launch itu
+ * sendiri**. Contoh (7 hari kerja, launch Jumat 27 Nov 2026): pinjam Rabu 25 Nov
+ * maupun Jumat 27 Nov sama-sama jatuh tempo **Jumat 4 Des 2026**.
+ *
+ * Pinjaman SESUDAH tanggal launch memakai aturan biasa: hari pinjam tidak dihitung
+ * (Sabtu 28 Nov → 7 Des). Jadi fungsi ini tidak mengubah perilaku normal sama sekali.
+ */
+export function computeLoanDueDate(borrowKey: string, workingDays: number, anchor: string | null = null): string {
+  if (!anchor || borrowKey > anchor) return computeDueDate(borrowKey, workingDays);
+  return computeDueDate(addDays(anchor, -1), workingDays);
+}
+
 export function dateFromKey(key: string): Date {
   return new Date(key + "T00:00:00Z");
 }

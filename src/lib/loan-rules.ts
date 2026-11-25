@@ -19,6 +19,27 @@ export const SETTING_LOAN_DAYS = "loan_working_days";
 export const LOAN_DAYS_MIN = 1;
 export const LOAN_DAYS_MAX = 30;
 
+/**
+ * Tanggal mulai dihitungnya tempo pinjaman (tanggal kalender WIB), disimpan di
+ * tabel `Setting` dengan kunci `SETTING_LOAN_COUNT_FROM`.
+ *
+ * Bos: *"Kan jadi 7 hari Broo semua dimulai dari hari besok aja dihitungan hari
+ * pertama Jumat. Karena baru launch jumat"*
+ *
+ * Perpustakaan diresmikan Jumat 27 Nov 2026. Pinjaman yang terjadi SEBELUM tanggal
+ * itu (persiapan, buku dibagikan lebih awal) tetap dihitung mulai Jumat: hari ke-1
+ * = Jumat 27 Nov, jadi 7 hari kerja berakhir Jumat 4 Des 2026.
+ *
+ * Kenapa disimpan sebagai Setting, bukan konstanta: begitu tanggal ini lewat ia
+ * tidak berpengaruh lagi (tanggal pinjam selalu lebih besar), jadi aman ditinggal.
+ * Tapi bila Bos menunda/memajukanlaunch, cukup ubah satu nilai di DB — tanpa deploy.
+ * Tidak ada baris = tidak ada jangkar (aturan biasa).
+ */
+export const SETTING_LOAN_COUNT_FROM = "loan_count_from";
+
+/** Nilai jangkar yang dipakai saat launch (diisi oleh seed/migrasi data). */
+export const LOAN_COUNT_FROM_SEED = "2026-11-27";
+
 /** Bulatkan & jepit nilai apa pun jadi jumlah hari yang sah. */
 export function clampLoanDays(value: unknown): number {
   // null / undefined / string kosong BUKAN angka 0 — Number(null) === 0, dan 0
