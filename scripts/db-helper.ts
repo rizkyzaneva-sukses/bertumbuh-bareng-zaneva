@@ -38,6 +38,13 @@ try {
       data: { passwordHash: hash, mustChangePassword: false, tempPassword: null },
     });
     console.log(JSON.stringify({ adminDiperbarui: admins.count }));
+  } else if (cmd === "temp-pw") {
+    // Untuk uji: ambil password sementara seorang user berdasarkan nomor HP.
+    const p = arg.replace(/[^\d+]/g, "").replace(/\+/g, "");
+    const norm = p.startsWith("0") ? "62" + p.slice(1) : p.startsWith("62") ? p : "62" + p;
+    const u = await prisma.user.findUnique({ where: { phone: norm }, select: { name: true, phone: true, tempPassword: true } });
+    if (!u) throw new Error(`user ${norm} tidak ada`);
+    console.log(JSON.stringify(u));
   } else {
     throw new Error(`perintah tidak dikenal: ${cmd}`);
   }
