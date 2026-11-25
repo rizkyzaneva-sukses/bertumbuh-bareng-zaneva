@@ -8,6 +8,22 @@ export type CoverBook = {
   coverUrl?: string | null;
 };
 
+/** Lebar logis tiap ukuran sampul (px CSS). Dipakai untuk atribut width/height. */
+const LEBAR: Record<string, number> = { xs: 56, sm: 76, md: 160, lg: 220 };
+
+/**
+ * Tambahkan parameter lebar ke URL sampul supaya rute menyajikan versi kecil.
+ *
+ * Hanya untuk sampul milik app ini (path /api/books/...). URL luar dibiarkan
+ * apa adanya — menambahkan ?w= ke domain orang lain tidak ada gunanya.
+ * `w` dinaikkan 2× karena layar HP ber-DPR 2–3.
+ */
+function gambarSrc(src: string, size: string): string {
+  if (!src.startsWith("/api/books/")) return src;
+  const w = (LEBAR[size] ?? LEBAR.md) * 2;
+  return src + (src.includes("?") ? "&" : "?") + "w=" + w;
+}
+
 /**
  * Sampul buku 2:3 bergaya etalase toko.
  *
@@ -31,8 +47,20 @@ export function BookCover({
   if (src) {
     return (
       <div className={cls} data-testid="book-cover" data-cover="image">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={`Sampul ${book.title}`} loading="lazy" decoding="async" />
+        {/* Sengaja <img> biasa, BUKAN next/image.
+            next/image mengambil gambar lewat /_next/image TANPA cookie sesi,
+            sedangkan rute sampul butuh login -> optimizer menerima 401 -> semua
+            sampul tampil rusak (sudah dibuktikan di browser: 20/20 broken).
+            Karena itu pengecilan gambar dilakukan DI DALAM rute sampul
+            (/api/books/[id]/cover?w=...), di mana cookie browser ikut terkirim. */}
+        <img
+          src={gambarSrc(src, size)}
+          alt={`Sampul ${book.title}`}
+          loading="lazy"
+          decoding="async"
+          width={LEBAR[size] * 2}
+          height={LEBAR[size] * 3}
+        />
         <span className="cover-sheen" aria-hidden />
       </div>
     );

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { MAX_ACTIVE_LOANS, effectiveStatus } from "@/lib/loan-status";
 import { keyFromDbDate } from "@/lib/dates";
-import { getDashboard, unfinishedFor } from "@/lib/stats";
+import { getRingkasanBeranda, unfinishedFor } from "@/lib/stats";
 import { progressMap } from "@/lib/reading";
 import { DueText, StatusChip } from "@/components/ui";
 import { ReturnLoanButton } from "@/components/LoanActions";
@@ -18,9 +18,9 @@ const BARU_HARI = 7;
 export default async function Beranda() {
   const user = await requireUser();
   const baruSejak = new Date(addDays(jakartaKey(new Date()), -(BARU_HARI - 1)) + "T00:00:00Z");
-  const [loans, dash, prog, lanjut, baru, lamaPinjam] = await Promise.all([
+  const [loans, ringkas, prog, lanjut, baru, lamaPinjam] = await Promise.all([
     prisma.loan.findMany({ where: { userId: user.id }, include: { book: true }, orderBy: { borrowedAt: "desc" } }),
-    getDashboard(),
+    getRingkasanBeranda(user.id),
     progressMap(user.id),
     unfinishedFor(user.id),
     prisma.book.findMany({ where: { createdAt: { gte: baruSejak }, archivedAt: null }, orderBy: { createdAt: "desc" }, take: 12 }),
@@ -28,8 +28,8 @@ export default async function Beranda() {
   ]);
   const active = loans.filter((l) => !l.returnedAt);
   const done = loans.filter((l) => l.returnedAt);
-  const finishedBooks = dash.perUser.find((u) => u.userId === user.id)?.finishedCount ?? 0;
-  const me = dash.ranking.find((r) => r.userId === user.id);
+  const finishedBooks = ringkas.finishedBooks;
+  const me = ringkas.myRank !== null ? { rank: ringkas.myRank } : undefined;
   return (
     <>
       <h1>Halo, {user.name.trim().split(" ")[0] || "Sahabat"} 👋</h1>
@@ -131,11 +131,11 @@ export default async function Beranda() {
         <Link href="/dashboard" className="small">Lihat semua</Link>
       </div>
       <div className="card" style={{ marginTop: 8 }}>
-        {dash.ranking.length === 0 ? (
+        {ringkas.top.length === 0 ? (
           <p className="muted" style={{ margin: 0 }}>Belum ada yang selesai baca. Jadi yang pertama!</p>
         ) : (
           <ul className="list">
-            {dash.ranking.slice(0, 5).map((r) => (
+            {ringkas.top.map((r) => (
               <li key={r.userId} className="row">
                 <span className={`rank r${r.rank}`}>{r.rank}</span>
                 <span style={{ flex: 1 }}>{r.name}{r.userId === user.id ? " (kamu)" : ""}</span>

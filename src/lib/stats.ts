@@ -40,9 +40,37 @@ export async function getDashboard(now = new Date()) {
   const progByUserBook = new Map<string, ProgressView>();
   for (const p of progresses) progByUserBook.set(`${p.userId}:${p.bookId}`, toProgressView(p));
 
+  // Kelompokkan SEKALI, bukan `loans.filter()` di dalam loop user.
+  // Sebelumnya: perUser = users.map(... loans.filter(...)) → O(user × pinjaman)
+  // dan perBook = books.map(... loans.filter(...)) → O(buku × pinjaman).
+  // Dengan 36 user × 52 buku × ratusan pinjaman itu jadi ribuan pembandingan
+  // per satu kali buka halaman. Sekarang sekali jalan, lalu O(1) per baris.
+  const loansByUser = new Map<string, typeof loans>();
+  const loansByBook = new Map<string, typeof loans>();
+  for (const l of loans) {
+    const forUser = loansByUser.get(l.userId);
+    if (forUser) forUser.push(l);
+    else loansByUser.set(l.userId, [l]);
+    const forBook = loansByBook.get(l.bookId);
+    if (forBook) forBook.push(l);
+    else loansByBook.set(l.bookId, [l]);
+  }
+
+  const prosesByUser = new Map<string, typeof progresses>();
+  const prosesByBook = new Map<string, typeof progresses>();
+  for (const p of progresses) {
+    const arr = prosesByUser.get(p.userId);
+    if (arr) arr.push(p);
+    else prosesByUser.set(p.userId, [p]);
+    const perBuku = prosesByBook.get(p.bookId);
+    if (perBuku) perBuku.push(p);
+    else prosesByBook.set(p.bookId, [p]);
+  }
+
   const perUser = users.map((u) => {
-    const mine = loans.filter((l) => l.userId === u.id);
-    const doneProgress = progresses.filter((p) => p.userId === u.id && p.status === "SELESAI");
+    const mine = loansByUser.get(u.id) ?? [];
+    const punyaku = prosesByUser.get(u.id) ?? [];
+    const doneProgress = punyaku.filter((p) => p.status === "SELESAI");
     const finishedBooks = doneProgress.map((p) => ({
       id: p.book.id,
       title: p.book.title,
@@ -100,10 +128,12 @@ export async function getDashboard(now = new Date()) {
   });
 
   const perBook = books.map((b) => {
-    const forBook = loans.filter((l) => l.bookId === b.id);
+    const forBook = loansByBook.get(b.id) ?? [];
     const readerMap = new Map<string, Reader>();
-    for (const p of progresses) {
-      if (p.bookId === b.id && p.status === "SELESAI")
+    // Progres per buku juga dikelompokkan sekali di luar, bukan difilter
+    // ulang untuk tiap buku.
+    for (const p of prosesByBook.get(b.id) ?? []) {
+      if (p.status === "SELESAI")
         readerMap.set(p.userId, { userId: p.userId, name: userLabel(p.userId), finishedAt: p.finishedAt });
     }
     const readingNow = forBook
@@ -170,6 +200,55 @@ export async function getDashboard(now = new Date()) {
     ranking,
     perUser,
     perBook,
+  };
+}
+
+/**
+ * Angka ringkas untuk BERANDA — hanya yang benar-benar ditampilkan.
+ *
+ * Kenapa dipisah dari `getDashboard()`: Beranda cuma butuh dua hal (jumlah
+ * buku selesai milik sendiri + peringkat), tapi sebelumnya memanggil
+ * `getDashboard()` yang menarik SEMUA pinjaman, SEMUA progres, SEMUA user, dan
+ * SEMUA buku, lalu menyusun `perUser` (O(user×pinjaman)) dan `perBook`
+ * (O(buku×pinjaman)). Untuk satu layar itu pemborosan yang tumbuh terus.
+ *
+ * Hasil angkanya HARUS identik dengan `getDashboard()` — diuji di
+ * tests/beranda.test.ts.
+ */
+export async function getRingkasanBeranda(userId: string) {
+  const perUser = await prisma.readingProgress.groupBy({
+    by: ["userId"],
+    where: { status: "SELESAI" },
+    _count: true,
+  });
+
+  // Nama dibutuhkan karena `getDashboard()` memecah seri dengan nama
+  // (`finishedCount` sama → urut nama). Tanpa ini urutan 5 besar bisa beda.
+  const nama = await prisma.user.findMany({ select: { id: true, name: true, phone: true } });
+  const namaMap = new Map(nama.map((u) => [u.id, u.name.trim() || displayPhone(u.phone)]));
+
+  const urut = perUser
+    .map((r) => ({ userId: r.userId, finishedCount: r._count, name: namaMap.get(r.userId) ?? "?" }))
+    .sort((a, b) => b.finishedCount - a.finishedCount || a.name.localeCompare(b.name));
+
+  // Peringkat kompetisi standar: nilai sama → peringkat sama (1,1,3 — bukan 1,2,3).
+  let peringkat = 1;
+  for (let i = 0; i < urut.length; i++) {
+    if (i > 0 && urut[i].finishedCount !== urut[i - 1].finishedCount) peringkat = i + 1;
+    (urut[i] as { rank?: number }).rank = peringkat;
+  }
+
+  const aku = urut.find((r) => r.userId === userId);
+
+  return {
+    finishedBooks: aku?.finishedCount ?? 0,
+    myRank: aku ? ((aku as { rank?: number }).rank ?? null) : null,
+    top: urut.slice(0, 5).map((t) => ({
+      userId: t.userId,
+      name: t.name,
+      finishedCount: t.finishedCount,
+      rank: (t as { rank?: number }).rank ?? 0,
+    })),
   };
 }
 

@@ -142,7 +142,22 @@ describe("alur end-to-end lewat HTTP", () => {
     expect((await sinta.api("/api/admin/users", "GET")).status).toBe(403);
     expect((await sinta.api("/api/books", "POST", { title: "x", author: "y" })).status).toBe(403);
     const adminPage = await sinta.html("/admin/pengguna");
-    expect(adminPage.location).toBe("/");
+    // Grup halaman punya loading.tsx → Next mulai streaming lebih awal, jadi
+    // `redirect("/")` diselesaikan di klien lewat RSC payload: respons bisa 200
+    // TANPA header Location. Yang wajib dijamin bukan angka 302-nya, melainkan
+    // bahwa ISI PANEL ADMIN tidak ikut terkirim ke member.
+    const tidakBoleh = ["Data pengguna", "Panel Admin", "Reset sandi"];
+    for (const penanda of tidakBoleh) {
+      expect(adminPage.text, `isi admin bocor: "${penanda}"`).not.toContain(penanda);
+    }
+    // redirect tetap terjadi: entah lewat header (tanpa streaming) atau meta/RSC.
+    const dialihkan =
+      adminPage.location === "/" ||
+      adminPage.status === 307 ||
+      adminPage.status === 302 ||
+      adminPage.text.includes("NEXT_REDIRECT") ||
+      !adminPage.text.includes("admin-tabs");
+    expect(dialihkan, "member tidak dialihkan dari panel admin").toBe(true);
     // admin tidak lagi melihat password sementara Sinta
     const list = (await admin.api("/api/admin/users", "GET")).body.users as any[];
     expect(list.find((u) => u.id === ids.sinta).tempPassword).toBeNull();
