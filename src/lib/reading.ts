@@ -198,7 +198,13 @@ export async function myHistory(userId: string, now = new Date()) {
   }));
 
   // Buku yang pernah dibaca selesai: gabungkan per bookId, ambil yang terakhir.
-  const finishedMap = new Map<string, { bookId: string; title: string; author: string; pages: number | null; lastReturnedAt: Date | null; times: number }>();
+  // `lastLoanId` penting: bukti pengembalian menempel ke PEMINJAMAN, sedangkan
+  // daftar ini dikelompokkan per BUKU. Tanpa ini UI tidak tahu bukti mana yang
+  // dibuka saat buku yang sama pernah dipinjam berkali-kali.
+  const finishedMap = new Map<
+    string,
+    { bookId: string; title: string; author: string; pages: number | null; lastReturnedAt: Date | null; lastLoanId: string; times: number }
+  >();
   for (const l of loans) {
     if (l.returnedAt) {
       const cur = finishedMap.get(l.bookId);
@@ -209,10 +215,12 @@ export async function myHistory(userId: string, now = new Date()) {
           author: l.book.author,
           pages: l.book.pages,
           lastReturnedAt: l.returnedAt,
+          lastLoanId: l.id,
           times: 1,
         });
       } else if (cur.lastReturnedAt && l.returnedAt > cur.lastReturnedAt) {
         cur.lastReturnedAt = l.returnedAt;
+        cur.lastLoanId = l.id;
         cur.times += 1;
       } else {
         cur.times += 1;

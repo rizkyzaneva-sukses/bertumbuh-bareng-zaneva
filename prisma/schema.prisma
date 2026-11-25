@@ -184,10 +184,31 @@ model Loan {
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   book        Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
   reminders   ReminderLog[]
+  proof       ReturnProof?
 
   @@index([userId, status])
   @@index([bookId, status])
   @@index([status, dueDate])
+}
+
+/// Foto bukti saat buku dikembalikan.
+///
+/// Peminjam memotret buku yang sudah diletakkan di rak / meja pengembalian.
+/// Ini menutup celah "saya sudah balikin kok masih ditagih": buktinya ada,
+/// bisa dibuka lagi kapan saja.
+///
+/// Satu peminjaman satu bukti. Disimpan di DB (pola sama dengan BookCover)
+/// supaya tidak butuh volume permanen dan tidak hilang saat redeploy.
+model ReturnProof {
+  loanId    String   @id
+  mime      String   @default("image/jpeg")
+  bytes     Bytes
+  width     Int?
+  height    Int?
+  /// Ukuran berkas setelah dikompres (byte). Dipakai untuk memantau storage.
+  sizeBytes Int      @default(0)
+  createdAt DateTime @default(now())
+  loan      Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
 }
 
 model ReminderLog {

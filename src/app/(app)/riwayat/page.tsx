@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { displayPhone } from "@/lib/phone";
 import { myHistory, daysFromToday } from "@/lib/reading";
 import { getLoanWorkingDays } from "@/lib/settings";
@@ -7,6 +8,7 @@ import { formatTanggalPendek } from "@/lib/dates";
 import { DueText, StatusChip } from "@/components/ui";
 import { ReturnLoanButton } from "@/components/LoanActions";
 import { ReadingControls, RenewButton, ProgressBar } from "@/components/ReadingControls";
+import { ProofUploader } from "@/components/ProofUploader";
 
 export const metadata = { title: "Riwayat Baca" };
 export const dynamic = "force-dynamic";
@@ -32,6 +34,17 @@ export default async function RiwayatPage({ searchParams }: { searchParams: Prom
   const { f: raw } = await searchParams;
   const f: FilterKey = (FILTERS.some((x) => x.key === raw) ? raw : "semua") as FilterKey;
   const [h, lamaPinjam] = await Promise.all([myHistory(user.id), getLoanWorkingDays()]);
+
+  // Bukti pengembalian per peminjaman (bukan per buku). Tanpa daftar ini UI
+  // harus menebak, dan buku yang dipinjam 2× bisa menunjuk bukti yang salah.
+  const bukti = new Map(
+    (
+      await prisma.returnProof.findMany({
+        where: { loanId: { in: h.returned.map((b) => b.lastLoanId) } },
+        select: { loanId: true, sizeBytes: true },
+      })
+    ).map((r) => [r.loanId, r.sizeBytes]),
+  );
 
   // Buku di tangan, dipisah menurut progresnya.
   const dipinjam = h.reading;
@@ -233,6 +246,13 @@ export default async function RiwayatPage({ searchParams }: { searchParams: Prom
                         {b.times > 1 ? ` · dipinjam ${b.times}×` : ""}
                       </span>{" "}
                       <span className="chip green">✓</span>
+                      <div style={{ marginTop: 6 }}>
+                        <ProofUploader
+                          loanId={b.lastLoanId}
+                          adaBuktiAwal={bukti.has(b.lastLoanId)}
+                          ukuranAwal={bukti.get(b.lastLoanId) ?? null}
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -264,6 +284,13 @@ export default async function RiwayatPage({ searchParams }: { searchParams: Prom
                       finished={false}
                       compact
                     />
+                    <div style={{ marginTop: 8 }}>
+                      <ProofUploader
+                        loanId={b.lastLoanId}
+                        adaBuktiAwal={bukti.has(b.lastLoanId)}
+                        ukuranAwal={bukti.get(b.lastLoanId) ?? null}
+                      />
+                    </div>
                   </div>
                 ))}
               </>

@@ -8,6 +8,7 @@ import { promptStats } from "@/lib/wa-prompts";
 import { StatusChip, ConditionChip } from "@/components/ui";
 import { ReturnLoanButton } from "@/components/LoanActions";
 import { ProgressBar } from "@/components/ReadingControls";
+import { ProofAdmin } from "@/components/ProofAdmin";
 
 export const metadata = { title: "Admin · Pinjaman" };
 export const dynamic = "force-dynamic";
@@ -19,6 +20,16 @@ export default async function AdminPinjaman() {
     prisma.readingProgress.findMany(),
     promptStats(),
   ]);
+  // Bukti foto untuk daftar pengembalian terbaru — supaya admin bisa memeriksa
+  // kondisi buku tanpa harus bertanya ke peminjam.
+  const bukti = new Map(
+    (
+      await prisma.returnProof.findMany({
+        where: { loanId: { in: recent.map((l) => l.id) } },
+        select: { loanId: true, sizeBytes: true, createdAt: true },
+      })
+    ).map((r) => [r.loanId, r]),
+  );
   const via = { LINK: "lewat link WA", USER: "oleh peminjam", ADMIN: "oleh admin" } as const;
   const bermasalah = recent.filter((l) => l.condition && l.condition !== "BAIK");
 
@@ -100,6 +111,13 @@ export default async function AdminPinjaman() {
                     {p && p.lastPage > 0 ? ` · sampai hlm ${p.lastPage}${l.book.pages ? `/${l.book.pages}` : ""}` : ""}
                   </div>
                   {l.conditionNote && <div className="small" style={{ fontStyle: "italic" }}>“{l.conditionNote}”</div>}
+                  <div style={{ marginTop: 6 }}>
+                    <ProofAdmin
+                      loanId={l.id}
+                      adaBukti={bukti.has(l.id)}
+                      ukuran={bukti.get(l.id)?.sizeBytes ?? null}
+                    />
+                  </div>
                 </li>
               );
             })}
