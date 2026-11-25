@@ -16,6 +16,8 @@ export type AdminBook = {
   active: number;
   coverUrl: string;
   issues?: BookIssues;
+  /** Terisi = buku sedang diarsipkan (tidak di rak, tidak bisa dipinjam). */
+  archivedAt?: string | null;
 };
 
 /** Kategori baku — sengaja daftar tetap supaya rak tidak pecah jadi puluhan label. */
@@ -166,21 +168,44 @@ function BookForm({ initial, onDone, onCancel }: { initial?: AdminBook; onDone: 
   );
 }
 
-export function AdminBooks({ books, totalIssues = 0 }: { books: AdminBook[]; totalIssues?: number }) {
+export function AdminBooks({ books, archived = [], totalIssues = 0 }: { books: AdminBook[]; archived?: AdminBook[]; totalIssues?: number }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [err, setErr] = useState("");
-  const shown = books.filter((b) => `${b.title} ${b.author}`.toLowerCase().includes(q.toLowerCase()));
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  // Tab "rak" (default) vs "arsip". Dipisah supaya buku yang disimpan tidak
+  // tercampur dengan koleksi aktif — dan supaya jumlah arsip terlihat jelas.
+  const [tab, setTab] = useState<"rak" | "arsip">("rak");
+  const list = tab === "rak" ? books : archived;
+  const shown = list.filter((b) => `${b.title} ${b.author}`.toLowerCase().includes(q.toLowerCase()));
   const bermasalah = books.filter((b) => b.issues && (b.issues.ringan + b.issues.berat + b.issues.hilang) > 0);
   const tanpaSampul = books.filter((b) => !b.coverUrl).length;
 
   async function del(b: AdminBook) {
-    if (!confirm(`Hapus "${b.title}"? Riwayat baca buku ini juga ikut terhapus dan tidak bisa dibatalkan.`)) return;
+    if (!confirm(`Hapus "${b.title}" PERMANEN?\n\nSampul, riwayat pinjam, dan progres baca buku ini ikut terhapus dan tidak bisa dibatalkan.\n\nKalau hanya ingin menyimpan bukunya, pakai "Arsipkan" — datanya tetap utuh.`)) return;
     setErr("");
     const r = await api(`/api/books/${b.id}`, "DELETE");
     if (!r.ok) return setErr(r.error ?? "Gagal menghapus");
+    router.refresh();
+  }
+
+  /** Arsipkan (simpan) atau kembalikan ke rak. Tidak menghapus apa pun. */
+  async function arsip(b: AdminBook, archived: boolean) {
+    const pesan = archived
+      ? `Arsipkan "${b.title}"?\n\nBuku hilang dari rak dan tidak bisa dipinjam lagi. Sampul, riwayat pinjam, dan progres baca tetap tersimpan, dan bisa dikembalikan ke rak kapan saja.` +
+        (b.active > 0 ? `\n\nCatatan: ${b.active} pinjaman masih berjalan — tetap bisa dikembalikan seperti biasa.` : "")
+      : `Kembalikan "${b.title}" ke rak?\n\nBuku muncul lagi di rak dan bisa dipinjam anggota.`;
+    if (!confirm(pesan)) return;
+    setErr("");
+    setNote("");
+    setBusy(b.id);
+    const r = await api<{ pesan?: string }>(`/api/books/${b.id}/archive`, "POST", { archived });
+    setBusy(null);
+    if (!r.ok) return setErr(r.error ?? "Gagal mengarsipkan");
+    setNote(r.pesan ?? (archived ? "Buku diarsipkan." : "Buku kembali ke rak."));
     router.refresh();
   }
 
@@ -192,7 +217,39 @@ export function AdminBooks({ books, totalIssues = 0 }: { books: AdminBook[]; tot
       </div>
       {adding && <div className="card"><h2>Buku baru</h2><BookForm onDone={() => { setAdding(false); router.refresh(); }} onCancel={() => setAdding(false)} /></div>}
       {err && <div className="err" role="alert">{err}</div>}
-      {totalIssues > 0 && (
+      {note && <div className="ok" role="status" data-testid="arsip-note">{note}</div>}
+      <div className="tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "rak"}
+          className={tab === "rak" ? "on" : ""}
+          onClick={() => { setTab("rak"); setEditing(null); }}
+          data-testid="tab-rak"
+        >
+          📚 Di rak ({books.length})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "arsip"}
+          className={tab === "arsip" ? "on" : ""}
+          onClick={() => { setTab("arsip"); setEditing(null); }}
+          data-testid="tab-arsip"
+        >
+          🗄️ Arsip ({archived.length})
+        </button>
+      </div>
+      {tab === "arsip" && (
+        <div className="card" style={{ borderLeft: "4px solid #64748b" }}>
+          <h2 style={{ marginTop: 0 }}>Buku yang disimpan</h2>
+          <p className="muted small" style={{ margin: 0 }}>
+            Buku di sini <b>tidak</b> muncul di rak dan tidak bisa dipinjam, tapi sampul, riwayat pinjam, dan progres baca tetap utuh.
+            Tekan <b>Kembalikan ke rak</b> kalau mau dipinjamkan lagi.
+          </p>
+        </div>
+      )}
+      {totalIssues > 0 && tab === "rak" && (
         <div className="card" data-testid="damage-summary" style={{ borderLeft: "4px solid #d97706" }}>
           <h2 style={{ marginTop: 0 }}>Buku bermasalah ({bermasalah.length} judul)</h2>
           <p className="muted small" style={{ marginTop: 0 }}>
@@ -211,10 +268,17 @@ export function AdminBooks({ books, totalIssues = 0 }: { books: AdminBook[]; tot
         </div>
       )}
       <p className="muted small">
-        {shown.length} dari {books.length} judul · {tanpaSampul > 0 ? `${tanpaSampul} masih pakai sampul otomatis` : "semua judul sudah punya gambar sampul"}
+        {shown.length} dari {list.length} judul · {tab === "rak"
+          ? tanpaSampul > 0 ? `${tanpaSampul} masih pakai sampul otomatis` : "semua judul sudah punya gambar sampul"
+          : `${archived.length} buku disimpan, datanya utuh`}
       </p>
+      {shown.length === 0 && (
+        <p className="muted">
+          {tab === "arsip" ? "Belum ada buku yang diarsipkan." : "Tidak ada buku yang cocok."}
+        </p>
+      )}
       {shown.map((b) => (
-        <div className="card" key={b.id} data-testid="admin-book">
+        <div className="card" key={b.id} data-testid={tab === "arsip" ? "archived-book" : "admin-book"}>
           {editing === b.id ? (
             <BookForm initial={b} onDone={() => { setEditing(null); router.refresh(); }} onCancel={() => setEditing(null)} />
           ) : (
@@ -228,6 +292,12 @@ export function AdminBooks({ books, totalIssues = 0 }: { books: AdminBook[]; tot
                   <div className="small muted">
                     {b.author} · {b.pages ? `${b.pages} hlm` : "halaman belum diisi"} · stok {b.stock}{b.active ? ` (${b.active} dipinjam)` : ""}
                   </div>
+                  {b.archivedAt && (
+                    <div className="meta" style={{ marginTop: 4 }}>
+                      <span className="chip" data-testid="chip-arsip">🗄️ diarsipkan</span>
+                      {b.active > 0 && <span className="chip amber">{b.active} pinjaman masih berjalan</span>}
+                    </div>
+                  )}
                   {b.issues && (b.issues.ringan + b.issues.berat + b.issues.hilang) > 0 && (
                     <div className="meta" style={{ marginTop: 4 }}>
                       {!!b.issues.ringan && <span className="chip amber">{b.issues.ringan}× rusak ringan</span>}
@@ -239,8 +309,29 @@ export function AdminBooks({ books, totalIssues = 0 }: { books: AdminBook[]; tot
                 {b.category && <span className="chip">{b.category}</span>}
               </div>
               <div className="row" style={{ marginTop: 10 }}>
-                <button className="btn sm ghost" onClick={() => setEditing(b.id)}>Edit</button>
-                <button className="btn sm danger" onClick={() => del(b)} data-testid="delete-book">Hapus</button>
+                {b.archivedAt ? (
+                  <button
+                    className="btn sm"
+                    disabled={busy === b.id}
+                    onClick={() => arsip(b, false)}
+                    data-testid="unarchive-book"
+                  >
+                    {busy === b.id ? "Memproses…" : "Kembalikan ke rak"}
+                  </button>
+                ) : (
+                  <>
+                    <button className="btn sm ghost" onClick={() => setEditing(b.id)}>Edit</button>
+                    <button
+                      className="btn sm ghost"
+                      disabled={busy === b.id}
+                      onClick={() => arsip(b, true)}
+                      data-testid="archive-book"
+                    >
+                      {busy === b.id ? "Memproses…" : "Arsipkan"}
+                    </button>
+                    <button className="btn sm danger" onClick={() => del(b)} data-testid="delete-book">Hapus</button>
+                  </>
+                )}
               </div>
             </>
           )}

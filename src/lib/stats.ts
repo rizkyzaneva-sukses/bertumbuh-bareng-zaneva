@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { effectiveStatus } from "./loan-status";
+import { RAK_FILTER } from "./archive";
 import { keyFromDbDate } from "./dates";
 import { displayPhone } from "./phone";
 import { toProgressView, type ProgressView } from "./reading";
@@ -23,7 +24,7 @@ export type Reader = { userId: string; name: string; finishedAt: Date | null };
 export async function getDashboard(now = new Date()) {
   const [users, books, loans, progresses] = await Promise.all([
     prisma.user.findMany({ select: { id: true, name: true, phone: true }, orderBy: { name: "asc" } }),
-    prisma.book.findMany({ orderBy: { title: "asc" } }),
+    prisma.book.findMany({ where: RAK_FILTER, orderBy: { title: "asc" } }),
     prisma.loan.findMany({ include: { book: { select: { id: true, title: true, author: true } } }, orderBy: { borrowedAt: "desc" } }),
     prisma.readingProgress.findMany({
       include: { book: { select: { id: true, title: true, author: true } } },

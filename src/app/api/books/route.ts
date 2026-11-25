@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
 import { handler, json } from "@/lib/http";
 import { BookBody } from "@/lib/schemas";
+import { RAK_FILTER } from "@/lib/archive";
 import { kabariBukuBaru, pushTerkonfigurasi } from "@/lib/push/kirim";
 
-export const GET = handler({}, async () => json({ ok: true, books: await prisma.book.findMany({ orderBy: { title: "asc" } }) }));
+// Hanya buku yang ada di rak. Buku arsip tidak boleh muncul di daftar publik.
+export const GET = handler({}, async () => json({ ok: true, books: await prisma.book.findMany({ where: RAK_FILTER, orderBy: { title: "asc" } }) }));
 
 /**
  * Tambah buku.

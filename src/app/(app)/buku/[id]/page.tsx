@@ -26,6 +26,10 @@ export default async function DetailBukuPage({ params }: { params: Promise<{ id:
 
   const book = await prisma.book.findUnique({ where: { id } });
   if (!book) notFound();
+  // Buku arsip tidak ada di rak, jadi anggota yang menyimpan URL lamanya tidak
+  // boleh tetap membuka halaman detail + tombol pinjamnya. Admin tetap bisa
+  // (dari Panel Admin) supaya bisa mengembalikannya ke rak.
+  if (book.archivedAt && user.role !== "ADMIN") notFound();
 
   const [active, myLoans, myProgress, lamaPinjam] = await Promise.all([
     prisma.loan.findMany({

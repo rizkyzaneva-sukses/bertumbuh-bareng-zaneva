@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { MAX_ACTIVE_LOANS } from "@/lib/loans";
+import { RAK_FILTER } from "@/lib/archive";
 import { getLoanWorkingDays } from "@/lib/settings";
 import { displayPhone } from "@/lib/phone";
 import { Catalog } from "@/components/Catalog";
@@ -11,7 +12,9 @@ export const dynamic = "force-dynamic";
 export default async function BukuPage() {
   const user = await requireUser();
   const [books, active, lamaPinjam] = await Promise.all([
-    prisma.book.findMany({ orderBy: { title: "asc" } }),
+    // Hanya buku yang ADA DI RAK. Buku arsip punya halamannya sendiri di Panel
+    // Admin, jadi tidak ikut muncul ke anggota.
+    prisma.book.findMany({ where: RAK_FILTER, orderBy: { title: "asc" } }),
     prisma.loan.findMany({
       where: { returnedAt: null },
       select: { bookId: true, userId: true, user: { select: { name: true, phone: true } } },

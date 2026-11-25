@@ -21,6 +21,9 @@ export async function borrowBook(userId: string, bookId: string, now = new Date(
     await tx.$queryRaw`SELECT id FROM "Book" WHERE id = ${bookId} FOR UPDATE`;
     const book = await tx.book.findUnique({ where: { id: bookId } });
     if (!book) throw new AppError("BOOK_NOT_FOUND", "Buku tidak ditemukan", 404);
+    // Buku yang diarsipkan hilang dari rak, jadi jangan bisa dipinjam lewat
+    // jalur mana pun (tombol, detail buku, atau request langsung ke API).
+    if (book.archivedAt) throw new AppError("ARCHIVED", "Buku ini sudah diarsipkan dan tidak bisa dipinjam.", 409);
     const active = await tx.loan.findMany({ where: { userId, returnedAt: null }, select: { bookId: true } });
     if (active.length >= MAX_ACTIVE_LOANS)
       throw new AppError("LIMIT", `Maksimal ${MAX_ACTIVE_LOANS} buku dalam satu waktu. Balikin dulu salah satu ya.`, 409);

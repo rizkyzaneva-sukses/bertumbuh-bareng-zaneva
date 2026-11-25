@@ -23,7 +23,7 @@ export default async function Beranda() {
     getDashboard(),
     progressMap(user.id),
     unfinishedFor(user.id),
-    prisma.book.findMany({ where: { createdAt: { gte: baruSejak } }, orderBy: { createdAt: "desc" }, take: 12 }),
+    prisma.book.findMany({ where: { createdAt: { gte: baruSejak }, archivedAt: null }, orderBy: { createdAt: "desc" }, take: 12 }),
     getLoanWorkingDays(),
   ]);
   const active = loans.filter((l) => !l.returnedAt);

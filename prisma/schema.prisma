@@ -113,6 +113,14 @@ model Book {
   /// URL/path gambar sampul (2:3). Kosong = rak memakai sampul generatif
   /// (tipografi bergaya toko buku, bukan cuma judul teks polos).
   coverUrl  String   @default("")
+  /// Kapan buku diarsipkan. Null = masih di rak.
+  ///
+  /// Bos: *"Sekalian tambahkan fitur arsipkan buku, takutnya saya butuh buat
+  /// pribadi"*. Arsip = buku DISIMPAN, bukan dihapus: hilang dari rak anggota,
+  /// tidak bisa dipinjam, tapi sampul + seluruh riwayat pinjam/bacanya utuh dan
+  /// bisa dikembalikan ke rak kapan saja. Berbeda dari Hapus yang memusnahkan
+  /// riwayat.
+  archivedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   loans     Loan[]
@@ -121,6 +129,7 @@ model Book {
   cover     BookCover?
 
   @@index([title])
+  @@index([archivedAt])
 }
 
 /// Gambar sampul hasil unggahan admin, disimpan di DB (bukan di disk) supaya
