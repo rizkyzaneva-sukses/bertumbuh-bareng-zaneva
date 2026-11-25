@@ -1,4 +1,4 @@
-import { coverPattern, coverTheme, coverTitleLines, coverTitleSize, coverSrc, splitTitle } from "@/lib/cover";
+import { coverPattern, coverTheme, coverTitleLines, coverTitleSize, coverSrc, sampulCdn, splitTitle, LEBAR_SAMPUL } from "@/lib/cover";
 
 export type CoverBook = {
   id: string;
@@ -7,22 +7,6 @@ export type CoverBook = {
   category: string;
   coverUrl?: string | null;
 };
-
-/** Lebar logis tiap ukuran sampul (px CSS). Dipakai untuk atribut width/height. */
-const LEBAR: Record<string, number> = { xs: 56, sm: 76, md: 160, lg: 220 };
-
-/**
- * Tambahkan parameter lebar ke URL sampul supaya rute menyajikan versi kecil.
- *
- * Hanya untuk sampul milik app ini (path /api/books/...). URL luar dibiarkan
- * apa adanya — menambahkan ?w= ke domain orang lain tidak ada gunanya.
- * `w` dinaikkan 2× karena layar HP ber-DPR 2–3.
- */
-function gambarSrc(src: string, size: string): string {
-  if (!src.startsWith("/api/books/")) return src;
-  const w = (LEBAR[size] ?? LEBAR.md) * 2;
-  return src + (src.includes("?") ? "&" : "?") + "w=" + w;
-}
 
 /**
  * Sampul buku 2:3 bergaya etalase toko.
@@ -52,14 +36,15 @@ export function BookCover({
             sedangkan rute sampul butuh login -> optimizer menerima 401 -> semua
             sampul tampil rusak (sudah dibuktikan di browser: 20/20 broken).
             Karena itu pengecilan gambar dilakukan DI DALAM rute sampul
-            (/api/books/[id]/cover?w=...), di mana cookie browser ikut terkirim. */}
+            (/api/books/[id]/cover/<versi>/<lebar>.webp), di mana cookie browser
+            ikut terkirim DAN URL-nya berakhiran .webp sehingga cacheable CDN. */}
         <img
-          src={gambarSrc(src, size)}
+          src={sampulCdn(src, size) ?? src}
           alt={`Sampul ${book.title}`}
           loading="lazy"
           decoding="async"
-          width={LEBAR[size] * 2}
-          height={LEBAR[size] * 3}
+          width={LEBAR_SAMPUL[size] * 2}
+          height={LEBAR_SAMPUL[size] * 3}
         />
         <span className="cover-sheen" aria-hidden />
       </div>

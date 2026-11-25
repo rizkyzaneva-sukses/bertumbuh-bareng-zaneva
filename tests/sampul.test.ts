@@ -97,15 +97,16 @@ describe("sampul buku", () => {
     // next/image mengambil gambar tanpa cookie → 401 → semua sampul rusak.
     expect(kode, "BookCover tidak boleh memakai next/image").not.toContain('from "next/image"');
     expect(kode).toContain("<img");
-    // Komponen wajib menyisipkan parameter lebar agar tidak mengunduh file penuh.
-    expect(kode).toContain("w=");
+    // Komponen wajib memakai pembangun URL sampul (menyisipkan lebar), bukan src mentah.
+    expect(kode).toContain("sampulCdn");
   });
 
-  it("hanya sampul app sendiri yang diberi parameter lebar", async () => {
+  it("hanya sampul app sendiri yang diberi lebar via CDN", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const kode = fs.readFileSync(path.join(process.cwd(), "src/components/BookCover.tsx"), "utf8");
-    // URL luar (http...) harus dibiarkan apa adanya.
+    // Aturan "jangan sentuh URL luar" pindah ke fungsi murni di lib/cover.ts
+    // (dulu di dalam komponen). Diuji perilakunya di tests/sampul-cdn.test.ts.
+    const kode = fs.readFileSync(path.join(process.cwd(), "src/lib/cover.ts"), "utf8");
     expect(kode).toContain('startsWith("/api/books/")');
   });
 
@@ -142,9 +143,24 @@ describe("sampul buku", () => {
   it("daftar lebar yang diizinkan dibatasi, bukan angka bebas", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const kode = fs.readFileSync(path.join(process.cwd(), "src/app/api/books/[id]/cover/route.ts"), "utf8");
+    // Penyaji pindah ke lib/sampul.ts supaya dipakai DUA rute (lama + ber-ekstensi).
+    const kode = fs.readFileSync(path.join(process.cwd(), "src/lib/sampul.ts"), "utf8");
     // Cegah penyalahgunaan: tanpa daftar tetap, ?w=1..999 membanjiri CPU.
     expect(kode).toContain("LEBAR_DIIZINKAN");
     expect(kode).toMatch(/LEBAR_DIIZINKAN\.includes/);
+  });
+
+  it("rute ber-ekstensi menolak lebar di luar daftar SEBELUM sentuh database", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const kode = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/books/[id]/cover/[...berkas]/route.ts"),
+      "utf8",
+    );
+    // Harus ada pemeriksaan daftar izin di rute, bukan hanya di penyaji.
+    expect(kode, "rute .webp wajib memeriksa LEBAR_DIIZINKAN").toContain("LEBAR_DIIZINKAN.includes");
+    // Dan URL wajib berakhiran .webp — itulah yang membuat Cloudflare mau cache.
+    expect(kode).toContain(".webp");
+    expect(kode).toContain("allowMustChange: true");
   });
 });

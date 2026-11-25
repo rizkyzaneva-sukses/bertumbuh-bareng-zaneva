@@ -185,4 +185,45 @@ export function coverSrc(coverUrl: string | null | undefined): string | null {
   return u;
 }
 
+/** Lebar logis tiap ukuran sampul (px CSS). Dipakai untuk width/height & URL. */
+export const LEBAR_SAMPUL: Record<string, number> = { xs: 56, sm: 76, md: 160, lg: 220 };
+
+/**
+ * Ubah URL sampul tersimpan menjadi URL yang **bisa di-cache CDN**.
+ *
+ * Kenapa perlu diubah (temuan lapangan, bukan teori):
+ * Cloudflare hanya menyimpan respons di cache tepi untuk URL berakhiran
+ * ekstensi berkas statis (`.webp`, `.jpg`, …). URL lama
+ * `/api/books/<id>/cover?w=320` tidak punya ekstensi, sehingga header
+ * `Cache-Control: public, immutable` DIIABAIKAN dan setiap permintaan tetap
+ * menyeberang ke server (`cf-cache-status: DYNAMIC`). Bentuk ber-ekstensi
+ * `/api/books/<id>/cover/<versi>/<lebar>.webp` membuat Cloudflare menyimpannya,
+ * jadi permintaan berikutnya dilayani dari tepi tanpa menyentuh server.
+ *
+ * Lebar dan versi ditaruh di PATH (bukan query string) supaya identitas cache
+ * tidak bergantung setelan "Cache Level" Cloudflare — kalau di query, setelan
+ * yang mengabaikan query string bisa membuat lebar 440 dan 320 tertukar.
+ *
+ * `versi` diambil dari `?v=` yang sudah ada di `coverUrl` (diisi saat admin
+ * mengganti sampul). Dengan begitu sampul baru tidak memakai cache lama.
+ *
+ * URL luar (openlibrary dsb.) dan bentuk yang tidak dikenal dikembalikan apa
+ * adanya.
+ */
+export function sampulCdn(coverUrl: string | null | undefined, size: string): string | null {
+  const u = (coverUrl ?? "").trim();
+  if (!u) return null;
+  if (!u.startsWith("/api/books/")) return u;
+
+  // Bentuk: /api/books/<id>/cover?v=<versi>
+  const cocok = /^\/api\/books\/([^/?#]+)\/cover(?:\?|$)/.exec(u);
+  if (!cocok) return u;
+  const id = cocok[1];
+  const versi = new URLSearchParams(u.split("?")[1] ?? "").get("v") ?? "0";
+
+  // `w` dinaikkan 2× karena layar HP ber-DPR 2–3.
+  const lebar = (LEBAR_SAMPUL[size] ?? LEBAR_SAMPUL.md) * 2;
+  return `/api/books/${encodeURIComponent(id)}/cover/${encodeURIComponent(versi)}/${lebar}.webp`;
+}
+
 export const COVER_ASPECT = 2 / 3;
