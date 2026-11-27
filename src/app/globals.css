@@ -355,15 +355,16 @@ input:focus, textarea:focus, select:focus, .btn:focus-visible, a:focus-visible, 
 .list li:last-child { border-bottom: 0; }
 .rank { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--bg2); font-weight: 800; flex: none; }
 .rank.r1 { background: #f6d365; color: #5b4300; } .rank.r2 { background: #d8dde3; color: #3c4650; } .rank.r3 { background: #e7b98f; color: #5b3516; }
-/* Judul buku di bawah nama pada ranking. Ditumpuk (block) supaya baris tidak
-   melebar melewati layar HP 360px; judul panjang dipotong 1 baris + elipsis,
-   teks penuh tetap ada lewat atribut title. */
+/* Judul buku di bawah nama pada ranking. Diberi 2 baris: di layar HP 360px
+   judul seperti "Dark Psychology: Memahami Sisi Gelap Pikiran Manusia" tidak
+   akan muat 1 baris — dipotong elipsis malah jadi tidak informatif. */
 .rank-books { display: block; margin-top: 2px; }
 .rank-book {
-  display: block; font-size: .78rem; line-height: 1.35; color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  font-size: .78rem; line-height: 1.35; color: var(--muted);
+  overflow: hidden; overflow-wrap: anywhere;
 }
-.rank-book + .rank-book { margin-top: 1px; }
+.rank-book + .rank-book { margin-top: 2px; }
 details { border: 1px solid var(--border); border-radius: 14px; background: var(--card); margin-bottom: 8px; box-shadow: var(--shadow); }
 summary { cursor: pointer; padding: 12px 14px; font-weight: 700; list-style: none; display: flex; gap: 8px; align-items: center; }
 summary::-webkit-details-marker { display: none; }
