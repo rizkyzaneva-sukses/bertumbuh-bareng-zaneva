@@ -56,7 +56,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <span className={`rank r${r.rank}`}>{r.rank}</span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     {r.name}{r.userId === user.id ? " (kamu)" : ""}
-                    {r.todayPages > 0 && <span className="small muted"> · {r.todayPages} hlm hari ini</span>}
+                    {/* Angka "X hlm hari ini" hanya muncul kalau buku hari ini
+                        tidak diketahui (mis. log lama tanpa judul); kalau ada,
+                        angka per buku di bawah sudah mewakilinya — dulu tampil
+                        dobel ("97 hlm hari ini" + chip "97 hlm"). */}
+                    {r.todayPages > 0 && r.todayBooks.length === 0 && (
+                      <span className="small muted"> · {r.todayPages} hlm hari ini</span>
+                    )}
                     {/* Judul buku hari ini. Tanpa ini angka halaman tidak bisa
                         dinilai adil — 97 hlm komik tipis beda dengan 97 hlm
                         buku tebal. Ditumpuk di bawah nama supaya baris tidak
@@ -73,7 +79,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     )}
                   </span>
                   {r.finishedCount > 0 && <span className="chip green">{r.finishedCount} buku tuntas</span>}
-                  <span className={`chip ${r.finishedCount > 0 ? "" : "accent"}`}>{r.totalPagesRead} hlm</span>
+                  {/* Diberi kata "total" supaya beda jelas dengan angka per buku
+                      hari ini di kolom kiri (dulu dua-duanya "97 hlm"). */}
+                  <span className={`chip ${r.finishedCount > 0 ? "" : "accent"}`}>
+                    {r.totalPagesRead} hlm total
+                  </span>
                 </li>
               ))}
             </ul>
