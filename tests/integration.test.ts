@@ -581,8 +581,15 @@ describe("pertanyaan beres-baca via WA", () => {
     expect(p.finishedAt).toBeNull();
 
     const d = await getDashboard(wib("2026-11-20", "09:00"));
+    // BUKU TUNTAS tetap 0: balasan "2 (50)" cuma menyimpan halaman, bukan
+    // menandai beres. Tapi orangnya TETAP muncul di ranking dengan 50 halaman —
+    // sebelumnya `ranking` hanya berisi yang tuntas, jadi karyawan yang rajin
+    // mencatat halaman tampil seolah "tidak ada". Bos: *"bro itu kan udah pada
+    // nandain halaman ya? tp kok ga ada di dashboardnya ya"*.
     expect(d.totals.finished).toBe(0);
-    expect(d.ranking).toHaveLength(0);
+    expect(d.ranking).toHaveLength(1);
+    expect(d.ranking[0].finishedCount).toBe(0);
+    expect(d.ranking[0].totalPagesRead).toBe(50);
 
     // Balasannya menyebut halaman yang dilaporkan
     expect(waha.calls[0].body.text).toContain("hlm 50");

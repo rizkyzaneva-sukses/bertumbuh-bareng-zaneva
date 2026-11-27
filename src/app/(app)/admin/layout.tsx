@@ -7,6 +7,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <>
       <h1>Panel Admin</h1>
       <div className="tabs admin-tabs">
+        <Link href="/admin/hari-ini">Hari Ini</Link>
         <Link href="/admin/pinjaman">Pinjam</Link>
         <Link href="/admin/buku">Buku</Link>
         <Link href="/admin/pengguna">User</Link>

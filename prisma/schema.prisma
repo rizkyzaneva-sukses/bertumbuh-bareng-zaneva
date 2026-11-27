@@ -99,6 +99,7 @@ model User {
   waPrompts          WaPrompt[]
   bookRequests       BookRequest[]
   pushSubscriptions  PushSubscription[]
+  readingLogs        ReadingLog[]
 }
 
 model Book {
@@ -125,6 +126,7 @@ model Book {
   updatedAt DateTime @updatedAt
   loans     Loan[]
   progresses ReadingProgress[]
+  readingLogs ReadingLog[]
   waPrompts  WaPrompt[]
   cover     BookCover?
 
@@ -243,7 +245,43 @@ model Setting {
   value String
 }
 
-/// Usulan buku dari anggota.
+/// Catatan baca HARIAN — satu baris per orang, per buku, per tanggal.
+///
+/// Bos: *"semua karyawan wajib baca buku setiap harinya ... saya ingin di
+/// dashboard admin terlihat si A hari ini baca berapa halaman dan bukunya apa"*.
+///
+/// Kenapa tabel terpisah, bukan cuma `ReadingProgress.lastPage`:
+/// `lastPage` hanya menyimpan POSISI terakhir. Kalau Budi hari ini baca 10
+/// halaman lalu besok membuka app lagi dan mengisi angka yang sama, tidak ada
+/// jejak "hari ini 10 halaman" — posisi memang tidak berubah. Dengan log harian,
+/// setiap perubahan posisi menghasilkan catatan tanggal, jadi pertanyaan "hari
+/// ini dia baca berapa halaman" bisa dijawab per hari.
+///
+/// `pagesRead` dihitung dari selisih halaman (delta), BUKAN posisi. Kalau orang
+/// memperbaiki angka ke bawah, delta-nya diabaikan (0) supaya tidak pernah ada
+/// halaman negatif yang merusak total.
+model ReadingLog {
+  id         String   @id @default(cuid())
+  userId     String
+  bookId     String
+  /// Tanggal kalender WIB (YYYY-MM-DD). String, bukan DateTime, supaya
+  /// pengelompokan "hari ini" tidak terpengaruh zona waktu server.
+  dayKey     String
+  /// Jumlah halaman yang benar-benar dibaca pada hari itu.
+  pagesRead  Int      @default(0)
+  /// Posisi halaman saat log ini ditulis (untuk jejak audit / grafik).
+  lastPage   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId, dayKey])
+  @@index([dayKey])
+  @@index([userId, dayKey])
+}
+
+/// Permintaan buku dari anggota.
 ///
 /// Bos: karyawan minta buku lewat bot WA, lalu bot merekap di app supaya admin
 /// tinggal lihat satu daftar — tidak perlu scroll chat WA satu per satu.

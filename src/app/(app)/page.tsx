@@ -132,14 +132,15 @@ export default async function Beranda() {
       </div>
       <div className="card" style={{ marginTop: 8 }}>
         {ringkas.top.length === 0 ? (
-          <p className="muted" style={{ margin: 0 }}>Belum ada yang selesai baca. Jadi yang pertama!</p>
+          <p className="muted" style={{ margin: 0 }}>Belum ada yang mencatat bacaan. Jadi yang pertama!</p>
         ) : (
           <ul className="list">
             {ringkas.top.map((r) => (
               <li key={r.userId} className="row">
                 <span className={`rank r${r.rank}`}>{r.rank}</span>
                 <span style={{ flex: 1 }}>{r.name}{r.userId === user.id ? " (kamu)" : ""}</span>
-                <span className="chip accent">{r.finishedCount} buku</span>
+                {r.finishedCount > 0 && <span className="chip green">{r.finishedCount} buku</span>}
+                {r.totalPagesRead > 0 && <span className="chip accent">{r.totalPagesRead} hlm</span>}
               </li>
             ))}
           </ul>

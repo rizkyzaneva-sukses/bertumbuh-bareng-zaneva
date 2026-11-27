@@ -23,14 +23,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="grid cols2 cols4" style={{ marginBottom: 14 }}>
         <Stat n={d.totals.books} label="Judul buku" />
         <Stat n={d.totals.reading} label="Sedang dipinjam" />
-        <Stat n={d.totals.finished} label="Beres dibaca" />
+        <Stat n={d.totals.todayPages} label="Halaman hari ini" />
         <Stat n={d.totals.late} label="Terlambat" />
       </div>
       <p className="muted small" style={{ marginTop: -6 }}>
-        <b>Beres dibaca</b> dihitung dari penanda selesai (klik di app atau balas <code>1</code> di WA) —
-        bukan dari buku yang sudah dikembalikan. {d.totals.returnedUnfinished > 0
-          ? `${d.totals.returnedUnfinished} buku sudah kembali ke rak tapi belum ditandai beres.`
-          : "Semua buku yang kembali sudah ditandai."}
+        <b>Halaman hari ini</b> = jumlah halaman yang dicatat semua karyawan hari ini.{" "}
+        {d.totals.finished === 0 && d.totals.totalPages > 0
+          ? `Sudah ${d.totals.totalPages} halaman tercatat, tapi belum ada buku yang ditandai tuntas — wajar, buku itu tebal.`
+          : d.totals.returnedUnfinished > 0
+            ? `${d.totals.returnedUnfinished} buku sudah kembali ke rak tapi belum ditandai beres.`
+            : "Semua buku yang kembali sudah ditandai."}
       </p>
       <div className="tabs" role="tablist">
         {TABS.map((x) => (
@@ -41,16 +43,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {tab === "ranking" && (
         <div className="card" data-testid="ranking">
           <h2>Pembaca teratas</h2>
-          <p className="muted small">Diurutkan dari jumlah buku berbeda yang benar-benar <b>selesai dibaca</b> (ditandai beres, lewat app atau WA).</p>
+          <p className="muted small">
+            Diurutkan dari jumlah buku yang <b>tuntas</b> dibaca; kalau sama, dari jumlah <b>halaman</b> yang tercatat.
+            Yang baru membaca sebagian tetap tampil — bukan dianggap tidak ada.
+          </p>
           {d.ranking.length === 0 ? (
-            <p className="muted">Belum ada yang selesai baca.</p>
+            <p className="muted">Belum ada yang mencatat bacaan.</p>
           ) : (
             <ul className="list">
               {d.ranking.map((r) => (
                 <li key={r.userId} className="row" data-testid="rank-row">
                   <span className={`rank r${r.rank}`}>{r.rank}</span>
-                  <span style={{ flex: 1 }}>{r.name}{r.userId === user.id ? " (kamu)" : ""}</span>
-                  <span className="chip accent">{r.finishedCount} buku</span>
+                  <span style={{ flex: 1 }}>
+                    {r.name}{r.userId === user.id ? " (kamu)" : ""}
+                    {r.todayPages > 0 && <span className="small muted"> · {r.todayPages} hlm hari ini</span>}
+                  </span>
+                  {r.finishedCount > 0 && <span className="chip green">{r.finishedCount} buku tuntas</span>}
+                  <span className={`chip ${r.finishedCount > 0 ? "" : "accent"}`}>{r.totalPagesRead} hlm</span>
                 </li>
               ))}
             </ul>
@@ -63,8 +72,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <details key={u.userId} data-testid="person">
             <summary>
               <span>{u.name}{u.userId === user.id ? " (kamu)" : ""}</span>
-              <span className="chip green">{u.finishedCount} selesai</span>
-              {u.reading.length > 0 && <span className="chip amber">{u.reading.length} dibaca</span>}
+              {u.finishedCount > 0 && <span className="chip green">{u.finishedCount} tuntas</span>}
+              {u.totalPagesRead > 0 && <span className="chip accent">{u.totalPagesRead} hlm</span>}
+              {u.todayPages > 0 && <span className="chip amber">{u.todayPages} hlm hari ini</span>}
+              {u.reading.length > 0 && <span className="chip">{u.reading.length} dipinjam</span>}
             </summary>
             <div className="inner">
               <h3>Sedang dibaca</h3>

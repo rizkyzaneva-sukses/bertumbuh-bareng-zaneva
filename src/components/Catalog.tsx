@@ -31,13 +31,29 @@ export type CatalogBook = {
 export function Catalog({ books, slotsFull, isAdmin, lamaHari }: { books: CatalogBook[]; slotsFull: boolean; isAdmin: boolean; lamaHari: number }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
+  /**
+   * Filter ketersediaan. Bos: *"tambahkan di rak buku filter buku mana aja yg
+   * masih free blm dipinjam dan mana saja yg lagi dipinjam"*.
+   *
+   * "Tersedia" = semua eksemplar masih di rak (tidak ada satu pun yang dipegang).
+   * "Dipinjam" = minimal satu eksemplar sedang dipegang orang. Buku stok 2 yang
+   * 1 dipinjam masuk "Dipinjam" (bukan dua-duanya) supaya tidak ada buku yang
+   * muncul dobel dan hitungannya tetap bisa dijumlahkan.
+   */
+  const [sisa, setSisa] = useState<"" | "tersedia" | "dipinjam">("");
   const cats = useMemo(() => categoriesInUse(books.map((b) => b.category)), [books]);
+  const jumlahTersedia = books.filter((b) => b.holders.length === 0).length;
+  const jumlahDipinjam = books.length - jumlahTersedia;
   const shown = books.filter((b) => {
     const t = `${b.title} ${b.author} ${b.category} ${b.synopsis}`.toLowerCase();
-    return (!q || t.includes(q.toLowerCase())) && (!cat || b.category === cat);
+    if (q && !t.includes(q.toLowerCase())) return false;
+    if (cat && b.category !== cat) return false;
+    if (sisa === "tersedia" && b.holders.length > 0) return false;
+    if (sisa === "dipinjam" && b.holders.length === 0) return false;
+    return true;
   });
-  // Lorong hanya dipakai saat tidak sedang mencari & tidak memilih kategori.
-  const grouped = !q && !cat;
+  // Lorong hanya dipakai saat tidak sedang mencari, memilih kategori, atau filter status.
+  const grouped = !q && !cat && !sisa;
 
   return (
     <>
@@ -50,6 +66,33 @@ export function Catalog({ books, slotsFull, isAdmin, lamaHari }: { books: Catalo
           aria-label="Cari buku"
           data-testid="search"
         />
+      </div>
+      <div className="tabs-scroll">
+      <div className="tabs status-tabs" role="tablist" aria-label="Filter status buku" data-testid="filter-status">
+        <button type="button" className={sisa === "" ? "on" : ""} onClick={() => setSisa("")} style={{ cursor: "pointer" }}>
+          Semua <span className="tab-count">{books.length}</span>
+        </button>
+        <button
+          type="button"
+          className={sisa === "tersedia" ? "on" : ""}
+          onClick={() => setSisa(sisa === "tersedia" ? "" : "tersedia")}
+          aria-pressed={sisa === "tersedia"}
+          style={{ cursor: "pointer" }}
+          data-testid="filter-tersedia"
+        >
+          <span className="tab-emoji" aria-hidden="true">✅ </span>Tersedia <span className="tab-count">{jumlahTersedia}</span>
+        </button>
+        <button
+          type="button"
+          className={sisa === "dipinjam" ? "on" : ""}
+          onClick={() => setSisa(sisa === "dipinjam" ? "" : "dipinjam")}
+          aria-pressed={sisa === "dipinjam"}
+          style={{ cursor: "pointer" }}
+          data-testid="filter-dipinjam"
+        >
+          <span className="tab-emoji" aria-hidden="true">📕 </span>Dipinjam <span className="tab-count">{jumlahDipinjam}</span>
+        </button>
+      </div>
       </div>
       <div className="tabs-scroll">
       <div className="tabs" role="tablist" aria-label="Filter kategori">
@@ -65,13 +108,21 @@ export function Catalog({ books, slotsFull, isAdmin, lamaHari }: { books: Catalo
       </div>
       <p className="shelf-hint" data-testid="shelf-hint">
         {shown.length} buku
+        {sisa === "tersedia" ? " siap dipinjam" : sisa === "dipinjam" ? " sedang dipegang orang" : ""}
         {slotsFull ? " · slot pinjammu penuh, balikin dulu satu buku ya" : ""}
       </p>
 
       {shown.length === 0 ? (
         <div className="card">
           <p className="muted" style={{ margin: 0 }}>
-            Tidak ada buku yang cocok. Coba kata kunci lain atau <button type="button" className="btn sm ghost" onClick={() => { setQ(""); setCat(""); }}>tampilkan semua</button>
+            {q || cat
+              ? "Tidak ada buku yang cocok. "
+              : sisa === "tersedia"
+                ? "Semua buku di rak sedang dipinjam. "
+                : sisa === "dipinjam"
+                  ? "Tidak ada buku yang sedang dipinjam — semua ada di rak. "
+                  : "Belum ada buku di rak. "}
+            Coba kata kunci lain atau <button type="button" className="btn sm ghost" onClick={() => { setQ(""); setCat(""); setSisa(""); }}>tampilkan semua</button>
           </p>
         </div>
       ) : grouped ? (

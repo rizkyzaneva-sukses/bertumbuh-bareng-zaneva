@@ -1,7 +1,7 @@
 import { prisma } from "./db";
 import { effectiveStatus } from "./loan-status";
 import { RAK_FILTER } from "./archive";
-import { keyFromDbDate } from "./dates";
+import { keyFromDbDate, jakartaKey } from "./dates";
 import { displayPhone } from "./phone";
 import { toProgressView, type ProgressView } from "./reading";
 
@@ -22,7 +22,8 @@ export type Reader = { userId: string; name: string; finishedAt: Date | null };
  * orangnya sudah menandai beres (dibaca di kantor, lalu dikembalikan belakangan).
  */
 export async function getDashboard(now = new Date()) {
-  const [users, books, loans, progresses] = await Promise.all([
+  const todayKey = jakartaKey(now);
+  const [users, books, loans, progresses, logs] = await Promise.all([
     prisma.user.findMany({ select: { id: true, name: true, phone: true }, orderBy: { name: "asc" } }),
     prisma.book.findMany({ where: RAK_FILTER, orderBy: { title: "asc" } }),
     prisma.loan.findMany({ include: { book: { select: { id: true, title: true, author: true } } }, orderBy: { borrowedAt: "desc" } }),
@@ -30,6 +31,12 @@ export async function getDashboard(now = new Date()) {
       include: { book: { select: { id: true, title: true, author: true } } },
       orderBy: [{ finishedAt: "desc" }],
     }),
+    // Rekap halaman dibaca. Ini yang menjawab "dia sudah baca berapa halaman",
+    // terpisah dari "buku mana yang sudah TUNTAS". Sebelumnya dashboard hanya
+    // membaca `ReadingProgress.status`, sehingga karyawan yang rajin mencatat
+    // halaman (60/320, 25/296) tetap tampil "belum ada yang selesai baca" —
+    // padahal catatannya ADA, cuma tidak pernah dibaca dashboard.
+    prisma.readingLog.findMany({ select: { userId: true, dayKey: true, pagesRead: true } }),
   ]);
 
   const userLabel = (id: string) => {
@@ -65,6 +72,23 @@ export async function getDashboard(now = new Date()) {
     const perBuku = prosesByBook.get(p.bookId);
     if (perBuku) perBuku.push(p);
     else prosesByBook.set(p.bookId, [p]);
+  }
+
+  // ── Rekap HALAMAN per orang ──────────────────────────────────────────────
+  //
+  // Dua angka berbeda dan keduanya penting:
+  //  • `totalPagesRead` = akumulasi SEMUA halaman yang pernah dicatat (sejak
+  //    fitur log harian aktif). Ini "sudah baca berapa banyak".
+  //  • `todayPages`     = halaman yang dibaca HARI INI saja.
+  //
+  // Sengaja dipisah dari `finishedCount` (buku TUNTAS): buku 320 halaman yang
+  // baru dibaca 60 halaman BELUM tuntas, tapi tetap kerja keras yang harus
+  // terlihat di dashboard — bukan dianggap "tidak ada".
+  const pagesByUser = new Map<string, number>();
+  const todayByUser = new Map<string, number>();
+  for (const l of logs) {
+    pagesByUser.set(l.userId, (pagesByUser.get(l.userId) ?? 0) + l.pagesRead);
+    if (l.dayKey === todayKey) todayByUser.set(l.userId, (todayByUser.get(l.userId) ?? 0) + l.pagesRead);
   }
 
   const perUser = users.map((u) => {
@@ -122,6 +146,10 @@ export async function getDashboard(now = new Date()) {
       name: label(u.name, u.phone),
       finished: finishedBooks,
       finishedCount: finishedBooks.length,
+      /** total halaman yang pernah dicatat (bukan buku tuntas) */
+      totalPagesRead: pagesByUser.get(u.id) ?? 0,
+      /** halaman yang dibaca hari ini */
+      todayPages: todayByUser.get(u.id) ?? 0,
       reading,
       returned,
     };
@@ -158,13 +186,30 @@ export async function getDashboard(now = new Date()) {
     };
   });
 
+  // Ranking mencakup DUA kelompok, bukan cuma yang tuntas buku:
+  //  1. yang sudah menuntaskan buku (prioritas utama — itu prestasi terbesar)
+  //  2. yang sudah membaca halaman tapi belum tuntas
+  //
+  // Sebelumnya filter `finishedCount > 0` membuang semua pembaca aktif, jadi
+  // orang yang mencatat 60 halaman tampil sebagai "Belum ada yang selesai
+  // baca" — seolah catatannya hilang. Padahal cuma tidak pernah ditampilkan.
   const ranking = perUser
-    .filter((u) => u.finishedCount > 0)
-    .sort((a, b) => b.finishedCount - a.finishedCount || a.name.localeCompare(b.name))
+    .filter((u) => u.finishedCount > 0 || u.totalPagesRead > 0)
+    .sort(
+      (a, b) =>
+        b.finishedCount - a.finishedCount ||
+        b.totalPagesRead - a.totalPagesRead ||
+        a.name.localeCompare(b.name),
+    )
     .map((u, i, arr) => {
-      // peringkat kompetisi standar: nilai sama -> peringkat sama
-      const rank = i > 0 && arr[i - 1].finishedCount === u.finishedCount ? -1 : i + 1;
-      return { ...u, rank };
+      // peringkat kompetisi standar: nilai sama -> peringkat sama.
+      // Kesamaan diukur dari KEDUA angka, karena dua orang yang sama-sama
+      // 0 buku tapi 60 vs 65 halaman bukan seri.
+      const sama =
+        i > 0 &&
+        arr[i - 1].finishedCount === u.finishedCount &&
+        arr[i - 1].totalPagesRead === u.totalPagesRead;
+      return { ...u, rank: sama ? -1 : i + 1 };
     });
   let last = 1;
   for (const r of ranking) {
@@ -196,6 +241,10 @@ export async function getDashboard(now = new Date()) {
       inProgress: progresses.filter((p) => p.status === "SEDANG_DIBACA").length,
       /** pasangan orang×buku yang bukunya kembali ke rak tapi belum ditandai beres */
       returnedUnfinished,
+      /** total halaman dibaca SEMUA orang hari ini */
+      todayPages: logs.filter((l) => l.dayKey === todayKey).reduce((s, l) => s + l.pagesRead, 0),
+      /** total halaman dibaca SEMUA orang sejak log harian aktif */
+      totalPages: logs.reduce((s, l) => s + l.pagesRead, 0),
     },
     ranking,
     perUser,
@@ -216,25 +265,49 @@ export async function getDashboard(now = new Date()) {
  * tests/beranda.test.ts.
  */
 export async function getRingkasanBeranda(userId: string) {
-  const perUser = await prisma.readingProgress.groupBy({
-    by: ["userId"],
-    where: { status: "SELESAI" },
-    _count: true,
-  });
+  const [perUser, pages] = await Promise.all([
+    prisma.readingProgress.groupBy({
+      by: ["userId"],
+      where: { status: "SELESAI" },
+      _count: true,
+    }),
+    // Total halaman tercatat per orang. Wajib ikut, karena ranking dashboard
+    // sekarang juga memuat pembaca yang belum menuntaskan buku — kalau Beranda
+    // tidak menghitungnya, urutan & isi ranking dua halaman ini berbeda.
+    prisma.readingLog.groupBy({ by: ["userId"], _sum: { pagesRead: true } }),
+  ]);
 
   // Nama dibutuhkan karena `getDashboard()` memecah seri dengan nama
   // (`finishedCount` sama → urut nama). Tanpa ini urutan 5 besar bisa beda.
   const nama = await prisma.user.findMany({ select: { id: true, name: true, phone: true } });
   const namaMap = new Map(nama.map((u) => [u.id, u.name.trim() || displayPhone(u.phone)]));
 
-  const urut = perUser
-    .map((r) => ({ userId: r.userId, finishedCount: r._count, name: namaMap.get(r.userId) ?? "?" }))
-    .sort((a, b) => b.finishedCount - a.finishedCount || a.name.localeCompare(b.name));
+  const selesaiMap = new Map(perUser.map((r) => [r.userId, r._count]));
+  const halamanMap = new Map(pages.map((r) => [r.userId, r._sum.pagesRead ?? 0]));
+
+  // Sama seperti dashboard: yang tuntas ATAU yang sudah membaca halaman.
+  const urut = [...new Set([...selesaiMap.keys(), ...halamanMap.keys()])]
+    .map((id) => ({
+      userId: id,
+      finishedCount: selesaiMap.get(id) ?? 0,
+      totalPagesRead: halamanMap.get(id) ?? 0,
+      name: namaMap.get(id) ?? "?",
+    }))
+    .filter((r) => r.finishedCount > 0 || r.totalPagesRead > 0)
+    .sort(
+      (a, b) =>
+        b.finishedCount - a.finishedCount ||
+        b.totalPagesRead - a.totalPagesRead ||
+        a.name.localeCompare(b.name),
+    );
 
   // Peringkat kompetisi standar: nilai sama → peringkat sama (1,1,3 — bukan 1,2,3).
   let peringkat = 1;
   for (let i = 0; i < urut.length; i++) {
-    if (i > 0 && urut[i].finishedCount !== urut[i - 1].finishedCount) peringkat = i + 1;
+    const prev = urut[i - 1];
+    const sama =
+      prev && prev.finishedCount === urut[i].finishedCount && prev.totalPagesRead === urut[i].totalPagesRead;
+    if (i > 0 && !sama) peringkat = i + 1;
     (urut[i] as { rank?: number }).rank = peringkat;
   }
 
@@ -247,6 +320,7 @@ export async function getRingkasanBeranda(userId: string) {
       userId: t.userId,
       name: t.name,
       finishedCount: t.finishedCount,
+      totalPagesRead: t.totalPagesRead,
       rank: (t as { rank?: number }).rank ?? 0,
     })),
   };

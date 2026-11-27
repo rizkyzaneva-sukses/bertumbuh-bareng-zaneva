@@ -169,6 +169,34 @@ input:focus, textarea:focus, select:focus, .btn:focus-visible, a:focus-visible, 
 }
 .admin-tabs a { padding: 0 12px; min-height: 44px; display: inline-flex; align-items: center; font-size: .85rem; }
 .tabs a.on, .tabs button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/* Angka jumlah di dalam chip filter rak. Sengaja kecil & pudar supaya tidak
+   bersaing dengan label, tapi tetap terbaca sebagai angka. */
+.tab-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 800;
+  background: var(--bg2);
+  color: var(--muted);
+}
+.tabs button.on .tab-count { background: var(--accent-ink); color: var(--accent); }
+/* Filter status rak: 3 chip ini WAJIB muat satu baris di HP 360px tanpa
+   terpotong. Padding & gap dikecilkan khusus baris ini, lalu di layar lebar
+   dikembalikan normal. Font tetap .85rem supaya tidak terlihat kekanak-kanakan. */
+.status-tabs { gap: 4px; }
+.status-tabs > button { padding: 0 9px; }
+.status-tabs .tab-count { margin-left: 4px; padding: 0 5px; }
+@media (min-width: 480px) {
+  .status-tabs { gap: 6px; }
+  .status-tabs > button { padding: 0 14px; }
+  .status-tabs .tab-count { margin-left: 6px; padding: 0 6px; }
+}
+/* Di bawah 380px emoji dibuang: label teks + angka lebih penting daripada ikon. */
+@media (max-width: 379px) {
+  .tab-emoji { display: none; }
+}
 .book { display: flex; flex-direction: column; gap: 8px; }
 .book h3 { margin: 0; }
 .book .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
