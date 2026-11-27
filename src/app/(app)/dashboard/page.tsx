@@ -54,9 +54,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {d.ranking.map((r) => (
                 <li key={r.userId} className="row" data-testid="rank-row">
                   <span className={`rank r${r.rank}`}>{r.rank}</span>
-                  <span style={{ flex: 1 }}>
+                  <span style={{ flex: 1, minWidth: 0 }}>
                     {r.name}{r.userId === user.id ? " (kamu)" : ""}
                     {r.todayPages > 0 && <span className="small muted"> · {r.todayPages} hlm hari ini</span>}
+                    {/* Judul buku hari ini. Tanpa ini angka halaman tidak bisa
+                        dinilai adil — 97 hlm komik tipis beda dengan 97 hlm
+                        buku tebal. Ditumpuk di bawah nama supaya baris tidak
+                        melebar keluar layar HP. */}
+                    {r.todayBooks.length > 0 && (
+                      <span className="rank-books">
+                        {r.todayBooks.map((b) => (
+                          <span key={b.title} className="rank-book" title={b.title}>
+                            📖 {b.title}
+                            <span className="muted"> — {b.pages} hlm</span>
+                          </span>
+                        ))}
+                      </span>
+                    )}
                   </span>
                   {r.finishedCount > 0 && <span className="chip green">{r.finishedCount} buku tuntas</span>}
                   <span className={`chip ${r.finishedCount > 0 ? "" : "accent"}`}>{r.totalPagesRead} hlm</span>

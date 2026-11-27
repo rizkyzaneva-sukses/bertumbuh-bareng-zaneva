@@ -36,7 +36,18 @@ export async function getDashboard(now = new Date()) {
     // membaca `ReadingProgress.status`, sehingga karyawan yang rajin mencatat
     // halaman (60/320, 25/296) tetap tampil "belum ada yang selesai baca" —
     // padahal catatannya ADA, cuma tidak pernah dibaca dashboard.
-    prisma.readingLog.findMany({ select: { userId: true, dayKey: true, pagesRead: true } }),
+    // `book.title` ikut diambil supaya ranking bisa menampilkan buku APA yang
+    // dibaca hari ini. Tanpa judul, "97 halaman" tidak bisa dinilai adil:
+    // 97 halaman komik tipis beda bobotnya dengan 97 halaman buku tebal.
+    prisma.readingLog.findMany({
+      select: {
+        userId: true,
+        bookId: true,
+        dayKey: true,
+        pagesRead: true,
+        book: { select: { title: true } },
+      },
+    }),
   ]);
 
   const userLabel = (id: string) => {
@@ -86,10 +97,20 @@ export async function getDashboard(now = new Date()) {
   // terlihat di dashboard — bukan dianggap "tidak ada".
   const pagesByUser = new Map<string, number>();
   const todayByUser = new Map<string, number>();
+  // Buku yang dibaca HARI INI per orang, urut halaman terbanyak. Dipakai
+  // kolom judul di ranking — angka 97 hlm baru adil kalau kelihatan bukunya.
+  const todayBooksByUser = new Map<string, { title: string; pages: number }[]>();
   for (const l of logs) {
     pagesByUser.set(l.userId, (pagesByUser.get(l.userId) ?? 0) + l.pagesRead);
-    if (l.dayKey === todayKey) todayByUser.set(l.userId, (todayByUser.get(l.userId) ?? 0) + l.pagesRead);
+    if (l.dayKey === todayKey) {
+      todayByUser.set(l.userId, (todayByUser.get(l.userId) ?? 0) + l.pagesRead);
+      const arr = todayBooksByUser.get(l.userId);
+      const row = { title: l.book?.title ?? "?", pages: l.pagesRead };
+      if (arr) arr.push(row);
+      else todayBooksByUser.set(l.userId, [row]);
+    }
   }
+  for (const arr of todayBooksByUser.values()) arr.sort((a, b) => b.pages - a.pages);
 
   const perUser = users.map((u) => {
     const mine = loansByUser.get(u.id) ?? [];
@@ -150,6 +171,8 @@ export async function getDashboard(now = new Date()) {
       totalPagesRead: pagesByUser.get(u.id) ?? 0,
       /** halaman yang dibaca hari ini */
       todayPages: todayByUser.get(u.id) ?? 0,
+      /** buku yang dibaca hari ini (judul + halaman), urut terbanyak */
+      todayBooks: todayBooksByUser.get(u.id) ?? [],
       reading,
       returned,
     };
